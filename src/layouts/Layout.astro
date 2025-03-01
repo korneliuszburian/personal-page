@@ -1,5 +1,7 @@
 ---
 import "../css/global.css";
+import { ClientRouter } from 'astro:transitions';
+
 interface Props {
   title: string;
 }
@@ -20,23 +22,23 @@ const { title } = Astro.props;
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
     <title>{title}</title>
+    <ClientRouter />
   </head>
   <body>
-    <div id="loading-screen">
+    <div id="loading-screen" transition:persist>
       <div class="loader"></div>
     </div>
-    <div id="scene-container">
+    <div id="scene-container" transition:persist>
       <slot />
     </div>
-    <div id="continue-prompt" class="hidden">
+    <div id="continue-prompt" class="hidden" transition:persist>
       Press Space or Click Logo to Continue
     </div>
-    <div id="menu" class="menu hidden">
+    <div id="menu" class="menu hidden" transition:persist>
       <nav>
         <ul>
           <li><a href="#" class="strike">Nowa kolekcja</a></li>
-          <li><a href="#load">Wczytaj kolekcję</a></li>
-          <li><a href="#photos">Zdjęcia</a></li>
+          <li><a href="/photos">Zdjęcia</a></li>
           <li><a href="#posters">Plakaty</a></li>
           <li><a href="#items">Itemy</a></li>
         </ul>
@@ -179,3 +181,40 @@ const { title } = Astro.props;
     pointer-events: none;
   }
 </style>
+
+<script>
+  let menuVisible = false;
+  let currentScene = null;
+
+  function setupMenuHandlers() {
+    const menu = document.getElementById('menu');
+    const sceneContainer = document.getElementById('scene-container');
+    
+    // Track menu state for transitions
+    document.addEventListener('astro:before-navigation', () => {
+      menuVisible = menu?.classList.contains('visible') || false;
+      if (menuVisible) {
+        menu?.classList.remove('visible');
+      }
+    });
+    
+    document.addEventListener('astro:after-navigation', () => {
+      if (menuVisible) {
+        menu?.classList.add('visible');
+      }
+    });
+
+    // Handle navigation clicks
+    const navLinks = document.querySelectorAll('.menu nav ul li a:not(.strike)');
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        if (!link.classList.contains('strike')) {
+          menuVisible = false;
+          menu?.classList.remove('visible');
+        }
+      });
+    });
+  }
+  
+  document.addEventListener('astro:load', setupMenuHandlers);
+</script>

@@ -1,0 +1,92 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Photos">
+  <main>
+    <div class="photos-container">
+      <h1>Photo Gallery</h1>
+      <div class="grid">
+        <div class="photo-item">
+          <img src="https://source.unsplash.com/random/800x600?1" alt="Sample photo 1" />
+        </div>
+        <div class="photo-item">
+          <img src="https://source.unsplash.com/random/800x600?2" alt="Sample photo 2" />
+        </div>
+        <div class="photo-item">
+          <img src="https://source.unsplash.com/random/800x600?3" alt="Sample photo 3" />
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .photos-container {
+    position: relative;
+    z-index: 10;
+    padding: 2rem;
+    color: white;
+  }
+
+  h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 2rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .photo-item {
+    position: relative;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+  }
+
+  .photo-item:hover {
+    transform: scale(1.02);
+  }
+
+  .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+  }
+
+  .photo-item:hover img {
+    opacity: 0.9;
+  }
+
+  main {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    width: 100%;
+  }
+</style>
+
+<script>
+  import { Scene } from '../components/Scene';
+  
+  function initScene() {
+    const container = document.getElementById('scene-container');
+    if (!document.querySelector('#scene-container canvas') && container) {
+      const scene = new Scene(container);
+    }
+  }
+
+  document.addEventListener('astro:page-load', initScene);
+</script>
