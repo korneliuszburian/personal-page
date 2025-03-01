@@ -1,19 +1,16 @@
 ---
 import "../css/global.css";
 import { ClientRouter } from 'astro:transitions';
-
 interface Props {
   title: string;
 }
-
 const { title } = Astro.props;
 ---
-
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="Astro description" />
+    <meta name="description" content="3D Card Game Shop" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
@@ -25,15 +22,22 @@ const { title } = Astro.props;
     <ClientRouter />
   </head>
   <body>
+    <!-- Loading screen -->
     <div id="loading-screen" transition:persist>
       <div class="loader"></div>
     </div>
+
+    <!-- Three.js scene container - this is just for the 3D background -->
     <div id="scene-container" transition:persist>
-      <slot />
+      <!-- Three.js canvas will be inserted here -->
     </div>
+
+    <!-- Continue prompt -->
     <div id="continue-prompt" class="hidden" transition:persist>
       Press Space or Click Logo to Continue
     </div>
+
+    <!-- Menu overlay -->
     <div id="menu" class="menu hidden" transition:persist>
       <nav>
         <ul>
@@ -44,6 +48,11 @@ const { title } = Astro.props;
         </ul>
       </nav>
     </div>
+
+    <!-- Page content container - separate from the 3D background -->
+    <main id="page-content">
+      <slot />
+    </main>
   </body>
 </html>
 
@@ -57,6 +66,7 @@ const { title } = Astro.props;
     justify-content: center;
     align-items: center;
     z-index: 1000;
+    transition: opacity 0.5s ease;
   }
 
   .loader {
@@ -74,6 +84,13 @@ const { title } = Astro.props;
     height: 100vh;
     z-index: 1;
     background: #000;
+  }
+
+  #page-content {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    min-height: 100vh;
   }
 
   #continue-prompt {
@@ -183,38 +200,129 @@ const { title } = Astro.props;
 </style>
 
 <script>
-  let menuVisible = false;
-  let currentScene = null;
+  import { Scene } from '../components/Scene';
 
+  let sceneInstance;
+  let menuVisible = false;
+  // Store the current pathname to detect home page
+  let isHomePage = window.location.pathname === '/' || window.location.pathname === '';
+
+  // Initialize the scene on first page load
+  function initScene() {
+    const container = document.getElementById('scene-container');
+    if (container && !document.querySelector('#scene-container canvas')) {
+      console.log("Initializing Scene");
+      const scene = new Scene(container);
+      sceneInstance = scene;
+    }
+  }
+
+  // Check if we need to show the menu
+  function checkMenuVisibility() {
+    const menu = document.getElementById('menu');
+    const continuePrompt = document.getElementById('continue-prompt');
+
+    // If we're on the home page, handle the logo animation sequence
+    if (isHomePage) {
+      // If the continue prompt is not visible, we've already gone through
+      // the intro animation, so show the menu
+      if (continuePrompt && continuePrompt.classList.contains('hidden') &&
+          menu && menu.classList.contains('hidden')) {
+        console.log("Auto-showing menu on home return");
+        menu.classList.remove('hidden');
+        menu.classList.add('visible');
+        menuVisible = true;
+      }
+    }
+  }
+
+  // Setup menu handlers
   function setupMenuHandlers() {
     const menu = document.getElementById('menu');
-    const sceneContainer = document.getElementById('scene-container');
-    
+
     // Track menu state for transitions
-    document.addEventListener('astro:before-navigation', () => {
+    document.addEventListener('astro:before-navigation', (e) => {
+      // Store if we're going to the home page
+      const navigatingToHome = e.to.pathname === '/' || e.to.pathname === '';
+
+      // Remember if menu was visible before navigation
       menuVisible = menu?.classList.contains('visible') || false;
-      if (menuVisible) {
-        menu?.classList.remove('visible');
+
+      if (menuVisible && menu) {
+        menu.classList.remove('visible');
+      }
+
+      // Store this for after navigation
+      sessionStorage.setItem('wasMenuVisible', menuVisible.toString());
+      sessionStorage.setItem('navigatingToHome', navigatingToHome.toString());
+
+      // Prepare scene for transition
+      if (sceneInstance) {
+        sceneInstance.prepareForTransition();
       }
     });
-    
-    document.addEventListener('astro:after-navigation', () => {
-      if (menuVisible) {
-        menu?.classList.add('visible');
+
+    document.addEventListener('astro:after-navigation', (e) => {
+      isHomePage = window.location.pathname === '/' || window.location.pathname === '';
+      const wasMenuVisible = sessionStorage.getItem('wasMenuVisible') === 'true';
+      const navigatingToHome = sessionStorage.getItem('navigatingToHome') === 'true';
+
+      // If we navigated to home page from another page, show the menu
+      if (isHomePage && navigatingToHome) {
+        setTimeout(() => {
+          if (menu) {
+            menu.classList.remove('hidden');
+            menu.classList.add('visible');
+            menuVisible = true;
+          }
+        }, 500); // Short delay to ensure transition effects work
+      }
+      // For other cases, restore previous state
+      else if (wasMenuVisible && menu) {
+        menu.classList.add('visible');
       }
     });
 
     // Handle navigation clicks
     const navLinks = document.querySelectorAll('.menu nav ul li a:not(.strike)');
     navLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
+      link.addEventListener('click', () => {
         if (!link.classList.contains('strike')) {
           menuVisible = false;
-          menu?.classList.remove('visible');
+          if (menu) {
+            menu.classList.remove('visible');
+          }
         }
       });
     });
+
+    // Listen for back-to-home links (specially handle these to show menu)
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('back-button') &&
+          e.target.getAttribute('href') === '/') {
+        sessionStorage.setItem('showMenuOnReturn', 'true');
+      }
+    });
   }
-  
-  document.addEventListener('astro:load', setupMenuHandlers);
+
+  // Initial load
+  document.addEventListener('DOMContentLoaded', () => {
+    initScene();
+    setupMenuHandlers();
+    // Check if we should show menu (for example, if returning from another page)
+    if (sessionStorage.getItem('showMenuOnReturn') === 'true') {
+      sessionStorage.removeItem('showMenuOnReturn');
+      setTimeout(checkMenuVisibility, 800); // Delay to allow transitions
+    }
+  });
+
+  // After navigation
+  document.addEventListener('astro:load', () => {
+    // Reinitialize scene if needed
+    if (!document.querySelector('#scene-container canvas')) {
+      initScene();
+    }
+    setupMenuHandlers();
+    checkMenuVisibility();
+  });
 </script>

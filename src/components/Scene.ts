@@ -1,3 +1,4 @@
+// src/components/Scene.ts
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -20,17 +21,19 @@ export class Scene {
     private secondaryBeamMesh: THREE.Mesh;
 
     constructor(container: HTMLElement) {
+        console.log("Constructing Scene");
+
         this.scene = new THREE.Scene();
         this.scene.fog = new THREE.FogExp2(0x000000, 0.005); // Reduced fog density
-        
+
         this.camera = new THREE.PerspectiveCamera(
             45, // Reduced FOV for better perspective
             window.innerWidth / window.innerHeight,
             0.1,
             1000
         );
-        
-        this.renderer = new THREE.WebGLRenderer({ 
+
+        this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
             powerPreference: "high-performance"
@@ -41,13 +44,14 @@ export class Scene {
         this.renderer.toneMappingExposure = 1.2;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Very important: the renderer canvas must be added to the container
         container.appendChild(this.renderer.domElement);
 
         // Enhanced post-processing
         this.composer = new EffectComposer(this.renderer);
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
-
         const bloomPass = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
             0.5,
@@ -56,7 +60,6 @@ export class Scene {
         );
         this.composer.addPass(bloomPass);
 
-        // Remove environment map loading since we don't have the files
         this.setupScene();
         this.animate();
         this.handleResize();
@@ -105,34 +108,37 @@ export class Scene {
         this.camera.position.set(0, 1, 12); // Moved camera back
         this.camera.lookAt(0, 0, 0);
 
-        // Load logo with updated path
+        // Load logo with path
         const loader = new GLTFLoader();
+
+        // Check if model file exists in the public directory
+        // Adjust the path as needed - this should match where you place your model
         const modelPath = '/glass-like-logo-2.glb';
-        
+
         console.log('Loading model from:', modelPath);
-        
+
         loader.load(
             modelPath,
             (gltf) => {
                 console.log('Model loaded successfully:', gltf);
                 this.logo = gltf.scene;
-                
+
                 // Center and scale the model
                 const box = new THREE.Box3().setFromObject(this.logo);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
-                
+
                 const maxDim = Math.max(size.x, size.y, size.z);
                 const scale = 6 / maxDim; // Increased scale
                 this.logo.scale.setScalar(scale);
-                
+
                 this.logo.position.sub(center.multiplyScalar(scale));
                 this.scene.add(this.logo);
-                
+
                 const logoMaterial = new THREE.MeshStandardMaterial({
                     metalness: 1.0,
                 });
-                
+
                 this.logo.traverse((child) => {
                     if (child instanceof THREE.Mesh) {
                         child.material = logoMaterial;
@@ -155,6 +161,24 @@ export class Scene {
             (error) => {
                 console.error('Error loading model:', error);
                 console.error('Model path attempted:', modelPath);
+
+                // Hide loading screen even if there's an error
+                this.hideLoadingScreen();
+
+                // Create a fallback cube if model loading fails
+                const geometry = new THREE.BoxGeometry(2, 2, 2);
+                const material = new THREE.MeshStandardMaterial({ color: 0x6666ff, metalness: 0.8 });
+                const cube = new THREE.Mesh(geometry, material);
+                this.scene.add(cube);
+                this.logo = new THREE.Group();
+                this.logo.add(cube);
+                this.scene.add(this.logo);
+
+                // Store initial position and rotation
+                this.initialLogoPosition = this.logo.position.clone();
+                this.initialLogoRotation = this.logo.rotation.clone();
+
+                this.showContinuePrompt();
             }
         );
     }
@@ -175,7 +199,7 @@ export class Scene {
                 );
                 raycaster.setFromCamera(mouse, this.camera);
                 const intersects = raycaster.intersectObject(this.logo, true);
-                
+
                 if (intersects.length > 0) {
                     this.handleContinue();
                 }
@@ -185,11 +209,11 @@ export class Scene {
 
     private handleContinue() {
         if (this.isMenuOpen || this.isTransitioning) return;
-        
+
         this.isTransitioning = true;
         const menu = document.getElementById('menu');
         const prompt = document.getElementById('continue-prompt');
-        
+
         this.isMenuOpen = true;
         const currentY = this.logo!.position.y;
 
@@ -263,7 +287,7 @@ export class Scene {
         const closeMenu = () => {
             if (!this.isTransitioning && this.isMenuOpen) {
                 this.isTransitioning = true;
-                
+
                 const closeTimeline = anime.timeline({
                     easing: 'easeInOutQuad'
                 });
@@ -331,22 +355,22 @@ export class Scene {
 
     private animate = () => {
         requestAnimationFrame(this.animate);
-        
+
         if (this.logo) {
             const time = performance.now() * 0.001;
-            
+
             if (this.isMenuOpen && !this.isTransitioning) {
                 // Enhanced background effects
                 this.logo.rotation.y += 0.0005;
-                
+
                 // Pulsing beam effect
                 const pulseIntensity = Math.sin(time * 0.5) * 0.3 + 0.7;
                 this.mainBeam.intensity = 150 + (50 * pulseIntensity);
-                
+
                 // Dynamic beam opacity
                 (this.beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.2 + (0.1 * pulseIntensity);
                 (this.secondaryBeamMesh.material as THREE.MeshBasicMaterial).opacity = 0.1 + (0.05 * pulseIntensity);
-                
+
                 // Dynamic fog density
                 this.scene.fog = new THREE.FogExp2(0x000000, 0.005 + (0.002 * pulseIntensity));
             } else if (!this.isTransitioning) {
@@ -355,7 +379,7 @@ export class Scene {
                 this.logo.position.y = Math.sin(time * 0.5) * 0.1 + Math.sin(time * 0.2) * 0.03;
                 this.logo.rotation.x = Math.sin(time * 0.3) * 0.02;
                 this.logo.rotation.z = Math.cos(time * 0.2) * 0.02;
-                
+
                 // Reset effects
                 this.mainBeam.intensity = 100;
                 (this.beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.15;
@@ -370,17 +394,17 @@ export class Scene {
     // Method to handle page transitions
     public prepareForTransition() {
         if (this.logo) {
-            // Stop all animations and return to gentle rotation
-            this.isMenuOpen = false;
-            this.isTransitioning = false;
-            
-            // Reset any active animations
+            // During transitions, just keep rotating gently
+            this.isTransitioning = true;
+
+            // Cancel any active animations
             anime.remove(this.logo.position);
             anime.remove(this.logo.rotation);
-            
-            // Ensure logo stays in background during page transition
-            this.logo.position.set(0, 0, 0);
-            this.logo.rotation.set(0, 0, 0);
+
+            // After a short delay, we'll return to normal animations
+            setTimeout(() => {
+                this.isTransitioning = false;
+            }, 800);
         }
     }
 
@@ -407,12 +431,13 @@ export class Scene {
         const prompt = document.getElementById('continue-prompt');
         if (prompt) {
             prompt.classList.remove('hidden');
-            
+
             // Split text for letter animation
-            prompt.innerHTML = prompt.textContent!.split('').map(char => 
+            const text = prompt.textContent || '';
+            prompt.innerHTML = text.split('').map(char =>
                 char === ' ' ? ' ' : `<span>${char}</span>`
             ).join('');
-            
+
             // Staggered letter animation
             anime.timeline({
                 easing: 'easeOutElastic(1, 0.8)'
@@ -430,7 +455,7 @@ export class Scene {
                 delay: anime.stagger(30),
                 duration: 600,
                 complete: () => {
-                    prompt.style.opacity = ''; // Enable CSS animation
+                    prompt.style.opacity = '1'; // Enable CSS animation
                 }
             }, '-=400');
         }

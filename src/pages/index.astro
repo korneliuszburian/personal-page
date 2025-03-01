@@ -1,52 +1,80 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-
 <Layout title="3D Card Game Shop">
-  <main>
-    <div id="page-content" class="content-container">
-      <!-- Page content here -->
-    </div>
-  </main>
+  <div class="home-content">
+    <h1>Welcome to the 3D Card Game Shop</h1>
+    <p>Explore our collection of premium card games.</p>
+  </div>
 </Layout>
 
 <script>
-  import { Scene } from '../components/Scene';
-  let sceneInstance: Scene;
-
+  // Check if we need to show home content even if the menu isn't visible yet
+  // This helps when returning from other pages
   document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('scene-container');
-    if (container) {
-      sceneInstance = new Scene(container);
-    }
-  });
+    const homeContent = document.querySelector('.home-content');
+    const menu = document.getElementById('menu');
 
-  // Handle Astro view transitions
-  document.addEventListener('astro:before-preparation', () => {
-    if (sceneInstance) {
-      sceneInstance.prepareForTransition();
+    // If we're coming back from another page, we might need to force show the content
+    if (sessionStorage.getItem('showMenuOnReturn') === 'true') {
+      if (homeContent) {
+        homeContent.classList.add('force-visible');
+      }
+    }
+
+    // Monitor menu visibility to toggle the force-visible class
+    if (menu && homeContent) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'class') {
+            if (menu.classList.contains('visible')) {
+              homeContent.classList.remove('force-visible');
+            }
+          }
+        });
+      });
+
+      observer.observe(menu, { attributes: true });
     }
   });
 </script>
 
 <style>
-  main {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    position: relative;
-    background: #000;
+  .home-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: white;
+    text-align: center;
+    padding: 2rem;
+    /* Only show content when menu is open */
+    opacity: 0;
+    transition: opacity 0.5s ease;
   }
 
-  :global(canvas) {
-    position: fixed !important;
-    top: 0;
-    left: 0;
-    outline: none;
+  /* Make content visible when menu is visible */
+  :global(#menu.visible) ~ .home-content,
+  .home-content.force-visible {
+    opacity: 1;
   }
 
-  .content-container {
-    position: relative;
-    z-index: 2;
+  h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(255,255,255,0.3),
+                 0 0 30px rgba(100,149,237,0.3);
+  }
+
+  p {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto;
   }
 </style>

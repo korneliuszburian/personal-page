@@ -1,50 +1,106 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-
-<Layout title="Photos">
-  <main>
-    <div class="photos-container">
+<Layout title="Photos | 3D Card Game Shop">
+  <div class="photos-container">
+    <div class="photos-header">
       <h1>Photo Gallery</h1>
-      <div class="grid">
-        <div class="photo-item">
-          <img src="https://source.unsplash.com/random/800x600?1" alt="Sample photo 1" />
-        </div>
-        <div class="photo-item">
-          <img src="https://source.unsplash.com/random/800x600?2" alt="Sample photo 2" />
-        </div>
-        <div class="photo-item">
-          <img src="https://source.unsplash.com/random/800x600?3" alt="Sample photo 3" />
-        </div>
+      <a href="/" class="back-button" id="back-to-home">Back to Home</a>
+    </div>
+
+    <div class="photos-grid">
+      <div class="photo-item">
+        <img src="https://source.unsplash.com/random/800x600?fantasy-cards" alt="Fantasy cards" />
+        <div class="photo-caption">Fantasy Collection</div>
+      </div>
+      <div class="photo-item">
+        <img src="https://source.unsplash.com/random/800x600?card-game" alt="Card game" />
+        <div class="photo-caption">Tournament Series</div>
+      </div>
+      <div class="photo-item">
+        <img src="https://source.unsplash.com/random/800x600?trading-cards" alt="Trading cards" />
+        <div class="photo-caption">Limited Edition</div>
+      </div>
+      <div class="photo-item">
+        <img src="https://source.unsplash.com/random/800x600?game-night" alt="Game night" />
+        <div class="photo-caption">Game Night</div>
       </div>
     </div>
-  </main>
+  </div>
 </Layout>
+
+<script>
+  // Handle the back button click to ensure menu is shown when returning to home
+  document.addEventListener('DOMContentLoaded', () => {
+    const backButton = document.getElementById('back-to-home');
+    if (backButton) {
+      backButton.addEventListener('click', (e) => {
+        // Set a flag in sessionStorage to indicate we're returning to home
+        sessionStorage.setItem('showMenuOnReturn', 'true');
+      });
+    }
+  });
+</script>
 
 <style>
   .photos-container {
     position: relative;
     z-index: 10;
-    padding: 2rem;
+    padding: 4rem 2rem;
     color: white;
+    max-width: 1200px;
+    margin: 0 auto;
+    opacity: 0;
+    animation: fadeIn 0.8s forwards;
+    animation-delay: 0.3s;
+  }
+
+  .photos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+    gap: 1rem;
   }
 
   h1 {
     font-family: 'Rajdhani', sans-serif;
     font-size: 3rem;
     font-weight: 700;
-    text-align: center;
-    margin-bottom: 2rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(255,255,255,0.3),
+                 0 0 30px rgba(100,149,237,0.3);
+    margin: 0;
   }
 
-  .grid {
+  .back-button {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .back-button:hover {
+    background: rgba(100, 149, 237, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .photos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
   }
 
   .photo-item {
@@ -52,41 +108,63 @@ import Layout from '../layouts/Layout.astro';
     aspect-ratio: 4/3;
     overflow: hidden;
     border-radius: 8px;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
   }
 
   .photo-item:hover {
-    transform: scale(1.02);
+    transform: scale(1.02) translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
   }
 
   .photo-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.5s ease;
   }
 
   .photo-item:hover img {
     opacity: 0.9;
+    transform: scale(1.05);
   }
 
-  main {
-    position: relative;
-    z-index: 10;
-    min-height: 100vh;
-    width: 100%;
+  .photo-caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
   }
-</style>
 
-<script>
-  import { Scene } from '../components/Scene';
-  
-  function initScene() {
-    const container = document.getElementById('scene-container');
-    if (!document.querySelector('#scene-container canvas') && container) {
-      const scene = new Scene(container);
+  .photo-item:hover .photo-caption {
+    transform: translateY(0);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 768px) {
+    .photos-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+    }
+
+    .photos-grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.5rem;
     }
   }
-
-  document.addEventListener('astro:page-load', initScene);
-</script>
+</style>
