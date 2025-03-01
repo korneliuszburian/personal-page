@@ -1,10 +1,11 @@
 // src/components/Scene.ts
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import anime from 'animejs/lib/anime.es.js';
+import { isMenuInteractionAllowed } from '../utils/menuState.js';
 
 export class Scene {
     private scene: THREE.Scene;
@@ -16,18 +17,18 @@ export class Scene {
     private initialLogoPosition: THREE.Vector3 | null = null;
     private initialLogoRotation: THREE.Euler | null = null;
     private isMenuOpen: boolean = false;
-    private mainBeam: THREE.SpotLight;
-    private beamMesh: THREE.Mesh;
-    private secondaryBeamMesh: THREE.Mesh;
+    private mainBeam!: THREE.SpotLight;
+    private beamMesh!: THREE.Mesh;
+    private secondaryBeamMesh!: THREE.Mesh;
 
     constructor(container: HTMLElement) {
         console.log("Constructing Scene");
 
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0x000000, 0.005); // Reduced fog density
+        this.scene.fog = new THREE.FogExp2(0x000000, 0.005);
 
         this.camera = new THREE.PerspectiveCamera(
-            45, // Reduced FOV for better perspective
+            45,
             window.innerWidth / window.innerHeight,
             0.1,
             1000
@@ -39,16 +40,14 @@ export class Scene {
             powerPreference: "high-performance"
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio); // Full resolution
+        this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.2;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Very important: the renderer canvas must be added to the container
         container.appendChild(this.renderer.domElement);
 
-        // Enhanced post-processing
         this.composer = new EffectComposer(this.renderer);
         const renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(renderPass);
@@ -67,11 +66,9 @@ export class Scene {
     }
 
     private setupScene() {
-        // Enhanced lighting setup
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         this.scene.add(ambientLight);
 
-        // Enhanced beam setup
         this.mainBeam = new THREE.SpotLight(0xffffff, 150);
         this.mainBeam.position.set(0, 15, 5);
         this.mainBeam.angle = Math.PI / 5;
@@ -81,7 +78,6 @@ export class Scene {
         this.mainBeam.castShadow = true;
         this.scene.add(this.mainBeam);
 
-        // Enhanced volumetric beam effect
         const beamGeometry = new THREE.CylinderGeometry(0.2, 2.5, 15, 32, 1, true);
         const beamMaterial = new THREE.MeshBasicMaterial({
             color: 0x4444ff,
@@ -95,7 +91,6 @@ export class Scene {
         this.beamMesh.rotation.x = Math.PI;
         this.scene.add(this.beamMesh);
 
-        // Enhanced secondary beam
         this.secondaryBeamMesh = this.beamMesh.clone();
         const secondaryMaterial = beamMaterial.clone();
         secondaryMaterial.opacity = 0.1;
@@ -104,17 +99,11 @@ export class Scene {
         this.secondaryBeamMesh.scale.set(1.8, 1.2, 1.8);
         this.scene.add(this.secondaryBeamMesh);
 
-        // Camera setup for better view
-        this.camera.position.set(0, 1, 12); // Moved camera back
+        this.camera.position.set(0, 1, 12);
         this.camera.lookAt(0, 0, 0);
 
-        // Load logo with path
         const loader = new GLTFLoader();
-
-        // Check if model file exists in the public directory
-        // Adjust the path as needed - this should match where you place your model
         const modelPath = '/glass-like-logo-2.glb';
-
         console.log('Loading model from:', modelPath);
 
         loader.load(
@@ -123,13 +112,12 @@ export class Scene {
                 console.log('Model loaded successfully:', gltf);
                 this.logo = gltf.scene;
 
-                // Center and scale the model
                 const box = new THREE.Box3().setFromObject(this.logo);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
 
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 6 / maxDim; // Increased scale
+                const scale = 6 / maxDim;
                 this.logo.scale.setScalar(scale);
 
                 this.logo.position.sub(center.multiplyScalar(scale));
@@ -147,7 +135,6 @@ export class Scene {
                     }
                 });
 
-                // Store initial position and rotation
                 this.initialLogoPosition = this.logo.position.clone();
                 this.initialLogoRotation = this.logo.rotation.clone();
 
@@ -161,11 +148,7 @@ export class Scene {
             (error) => {
                 console.error('Error loading model:', error);
                 console.error('Model path attempted:', modelPath);
-
-                // Hide loading screen even if there's an error
                 this.hideLoadingScreen();
-
-                // Create a fallback cube if model loading fails
                 const geometry = new THREE.BoxGeometry(2, 2, 2);
                 const material = new THREE.MeshStandardMaterial({ color: 0x6666ff, metalness: 0.8 });
                 const cube = new THREE.Mesh(geometry, material);
@@ -173,43 +156,40 @@ export class Scene {
                 this.logo = new THREE.Group();
                 this.logo.add(cube);
                 this.scene.add(this.logo);
-
-                // Store initial position and rotation
                 this.initialLogoPosition = this.logo.position.clone();
                 this.initialLogoRotation = this.logo.rotation.clone();
-
                 this.showContinuePrompt();
             }
         );
     }
 
     private setupInteractions() {
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.isTransitioning) {
-                this.handleContinue();
-            }
-        });
+      window.addEventListener('keydown', (e) => {
+          // Only respond to space key if menu interaction is allowed (on home page)
+          if (e.code === 'Space' && !this.isTransitioning && isMenuInteractionAllowed()) {
+              this.handleContinue();
+          }
+      });
 
-        window.addEventListener('click', (e) => {
-            if (this.logo && !this.isTransitioning) {
-                const raycaster = new THREE.Raycaster();
-                const mouse = new THREE.Vector2(
-                    (e.clientX / window.innerWidth) * 2 - 1,
-                    -(e.clientY / window.innerHeight) * 2 + 1
-                );
-                raycaster.setFromCamera(mouse, this.camera);
-                const intersects = raycaster.intersectObject(this.logo, true);
-
-                if (intersects.length > 0) {
-                    this.handleContinue();
-                }
-            }
-        });
-    }
+      window.addEventListener('click', (e) => {
+          // Only respond to logo click if menu interaction is allowed (on home page)
+          if (this.logo && !this.isTransitioning && isMenuInteractionAllowed()) {
+              const raycaster = new THREE.Raycaster();
+              const mouse = new THREE.Vector2(
+                  (e.clientX / window.innerWidth) * 2 - 1,
+                  -(e.clientY / window.innerHeight) * 2 + 1
+              );
+              raycaster.setFromCamera(mouse, this.camera);
+              const intersects = raycaster.intersectObject(this.logo, true);
+              if (intersects.length > 0) {
+                  this.handleContinue();
+              }
+          }
+      });
+  }
 
     private handleContinue() {
         if (this.isMenuOpen || this.isTransitioning) return;
-
         this.isTransitioning = true;
         const menu = document.getElementById('menu');
         const prompt = document.getElementById('continue-prompt');
@@ -217,7 +197,6 @@ export class Scene {
         this.isMenuOpen = true;
         const currentY = this.logo!.position.y;
 
-        // Smooth prompt fade out animation
         if (prompt) {
             anime({
                 targets: prompt,
@@ -243,8 +222,8 @@ export class Scene {
             })
             .add({
                 targets: this.logo!.rotation,
-                y: Math.PI * 3, // Increased rotation
-                duration: 1200, // Faster rotation
+                y: Math.PI * 3,
+                duration: 1200,
                 easing: 'easeInOutQuad'
             }, '-=1200')
             .add({
@@ -283,11 +262,9 @@ export class Scene {
                 }
             });
 
-        // Close menu animation
         const closeMenu = () => {
             if (!this.isTransitioning && this.isMenuOpen) {
                 this.isTransitioning = true;
-
                 const closeTimeline = anime.timeline({
                     easing: 'easeInOutQuad'
                 });
@@ -311,7 +288,6 @@ export class Scene {
                             }
                         }
                     })
-                    // Return animation with up/down motion
                     .add({
                         targets: this.logo!.position,
                         y: currentY + 2,
@@ -337,7 +313,6 @@ export class Scene {
             }
         };
 
-        // Add menu close handlers
         if (menu) {
             menu.addEventListener('click', (e) => {
                 if (e.target === menu) {
@@ -360,27 +335,17 @@ export class Scene {
             const time = performance.now() * 0.001;
 
             if (this.isMenuOpen && !this.isTransitioning) {
-                // Enhanced background effects
                 this.logo.rotation.y += 0.0005;
-
-                // Pulsing beam effect
                 const pulseIntensity = Math.sin(time * 0.5) * 0.3 + 0.7;
                 this.mainBeam.intensity = 150 + (50 * pulseIntensity);
-
-                // Dynamic beam opacity
                 (this.beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.2 + (0.1 * pulseIntensity);
                 (this.secondaryBeamMesh.material as THREE.MeshBasicMaterial).opacity = 0.1 + (0.05 * pulseIntensity);
-
-                // Dynamic fog density
                 this.scene.fog = new THREE.FogExp2(0x000000, 0.005 + (0.002 * pulseIntensity));
             } else if (!this.isTransitioning) {
-                // Normal animation state
                 this.logo.rotation.y += 0.001;
                 this.logo.position.y = Math.sin(time * 0.5) * 0.1 + Math.sin(time * 0.2) * 0.03;
                 this.logo.rotation.x = Math.sin(time * 0.3) * 0.02;
                 this.logo.rotation.z = Math.cos(time * 0.2) * 0.02;
-
-                // Reset effects
                 this.mainBeam.intensity = 100;
                 (this.beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.15;
                 (this.secondaryBeamMesh.material as THREE.MeshBasicMaterial).opacity = 0.08;
@@ -391,17 +356,11 @@ export class Scene {
         this.composer.render();
     }
 
-    // Method to handle page transitions
     public prepareForTransition() {
         if (this.logo) {
-            // During transitions, just keep rotating gently
             this.isTransitioning = true;
-
-            // Cancel any active animations
             anime.remove(this.logo.position);
             anime.remove(this.logo.rotation);
-
-            // After a short delay, we'll return to normal animations
             setTimeout(() => {
                 this.isTransitioning = false;
             }, 800);
@@ -431,14 +390,11 @@ export class Scene {
         const prompt = document.getElementById('continue-prompt');
         if (prompt) {
             prompt.classList.remove('hidden');
-
-            // Split text for letter animation
             const text = prompt.textContent || '';
             prompt.innerHTML = text.split('').map(char =>
                 char === ' ' ? ' ' : `<span>${char}</span>`
             ).join('');
 
-            // Staggered letter animation
             anime.timeline({
                 easing: 'easeOutElastic(1, 0.8)'
             })
@@ -455,7 +411,7 @@ export class Scene {
                 delay: anime.stagger(30),
                 duration: 600,
                 complete: () => {
-                    prompt.style.opacity = '1'; // Enable CSS animation
+                    prompt.style.opacity = '1';
                 }
             }, '-=400');
         }
