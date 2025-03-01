@@ -1,23 +1,30 @@
 ---
 import "../css/global.css";
-import { ClientRouter } from 'astro:transitions';
+import { ClientRouter } from "astro:transitions";
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
 ---
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="3D Card Game Shop" />
+    <meta name="description" content="Thrifted streetwear shop" />
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap"
+      rel="stylesheet"
+    />
     <title>{title}</title>
     <ClientRouter />
   </head>
@@ -53,276 +60,290 @@ const { title } = Astro.props;
     <main id="page-content">
       <slot />
     </main>
-  </body>
-</html>
-
-<style>
-  #loading-screen {
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-    background: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    transition: opacity 0.5s ease;
-  }
-
-  .loader {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #333;
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  #scene-container {
-    position: fixed;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-    background: #000;
-  }
-
-  #page-content {
-    position: relative;
-    z-index: 5;
-    width: 100%;
-    min-height: 100vh;
-  }
-
-  #continue-prompt {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 500;
-    opacity: 0;
-    z-index: 100;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    text-shadow: 0 0 10px rgba(255,255,255,0.5),
-                 0 0 20px rgba(255,255,255,0.3);
-    animation: glowPulse 3s infinite;
-    white-space: nowrap;
-    transform-origin: center bottom;
-    transition: none;
-  }
-
-  @keyframes glowPulse {
-    0%, 100% {
-      opacity: 0.7;
-      transform: translateX(-50%) scale(0.98);
-      text-shadow: 0 0 10px rgba(255,255,255,0.3),
-                   0 0 20px rgba(255,255,255,0.2);
-    }
-    50% {
-      opacity: 1;
-      transform: translateX(-50%) scale(1);
-      text-shadow: 0 0 15px rgba(255,255,255,0.5),
-                   0 0 30px rgba(255,255,255,0.3),
-                   0 0 40px rgba(100,149,237,0.3);
-    }
-  }
-
-  .hidden {
-    display: none;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .menu {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.8);
-    opacity: 0;
-    transition: opacity 0.5s;
-    pointer-events: none;
-    z-index: 500;
-  }
-
-  .menu.visible {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .menu nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    text-align: center;
-  }
-
-  .menu nav ul li {
-    margin: 2rem 0;
-    transform: translateY(20px);
-    opacity: 0;
-    transition: all 0.3s;
-  }
-
-  .menu.visible nav ul li {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  .menu nav ul li a {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: white;
-    text-decoration: none;
-    font-size: 2rem;
-    transition: color 0.3s;
-  }
-
-  .menu nav ul li a:hover {
-    color: #f0f0f0;
-  }
-
-  .menu nav ul li a.strike {
-    text-decoration: line-through;
-    opacity: 0.5;
-    pointer-events: none;
-  }
-</style>
-
-<script>
-  import { Scene } from '../components/Scene';
-
-  let sceneInstance;
-  let menuVisible = false;
-  // Store the current pathname to detect home page
-  let isHomePage = window.location.pathname === '/' || window.location.pathname === '';
-
-  // Initialize the scene on first page load
-  function initScene() {
-    const container = document.getElementById('scene-container');
-    if (container && !document.querySelector('#scene-container canvas')) {
-      console.log("Initializing Scene");
-      const scene = new Scene(container);
-      sceneInstance = scene;
-    }
-  }
-
-  // Check if we need to show the menu
-  function checkMenuVisibility() {
-    const menu = document.getElementById('menu');
-    const continuePrompt = document.getElementById('continue-prompt');
-
-    // If we're on the home page, handle the logo animation sequence
-    if (isHomePage) {
-      // If the continue prompt is not visible, we've already gone through
-      // the intro animation, so show the menu
-      if (continuePrompt && continuePrompt.classList.contains('hidden') &&
-          menu && menu.classList.contains('hidden')) {
-        console.log("Auto-showing menu on home return");
-        menu.classList.remove('hidden');
-        menu.classList.add('visible');
-        menuVisible = true;
-      }
-    }
-  }
-
-  // Setup menu handlers
-  function setupMenuHandlers() {
-    const menu = document.getElementById('menu');
-
-    // Track menu state for transitions
-    document.addEventListener('astro:before-navigation', (e) => {
-      // Store if we're going to the home page
-      const navigatingToHome = e.to.pathname === '/' || e.to.pathname === '';
-
-      // Remember if menu was visible before navigation
-      menuVisible = menu?.classList.contains('visible') || false;
-
-      if (menuVisible && menu) {
-        menu.classList.remove('visible');
+    <style>
+      #loading-screen {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        transition: opacity 0.5s ease;
       }
 
-      // Store this for after navigation
-      sessionStorage.setItem('wasMenuVisible', menuVisible.toString());
-      sessionStorage.setItem('navigatingToHome', navigatingToHome.toString());
-
-      // Prepare scene for transition
-      if (sceneInstance) {
-        sceneInstance.prepareForTransition();
+      .loader {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #333;
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
       }
-    });
 
-    document.addEventListener('astro:after-navigation', (e) => {
-      isHomePage = window.location.pathname === '/' || window.location.pathname === '';
-      const wasMenuVisible = sessionStorage.getItem('wasMenuVisible') === 'true';
-      const navigatingToHome = sessionStorage.getItem('navigatingToHome') === 'true';
+      #scene-container {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+        background: #000;
+      }
 
-      // If we navigated to home page from another page, show the menu
-      if (isHomePage && navigatingToHome) {
-        setTimeout(() => {
-          if (menu) {
-            menu.classList.remove('hidden');
-            menu.classList.add('visible');
+      #page-content {
+        position: relative;
+        z-index: 5;
+        width: 100%;
+        min-height: 100vh;
+      }
+
+      #continue-prompt {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-family: "Rajdhani", sans-serif;
+        font-size: 1.4rem;
+        font-weight: 500;
+        opacity: 0;
+        z-index: 100;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        text-shadow:
+          0 0 10px rgba(255, 255, 255, 0.5),
+          0 0 20px rgba(255, 255, 255, 0.3);
+        animation: glowPulse 3s infinite;
+        white-space: nowrap;
+        transform-origin: center bottom;
+        transition: none;
+      }
+
+      @keyframes glowPulse {
+        0%,
+        100% {
+          opacity: 0.7;
+          transform: translateX(-50%) scale(0.98);
+          text-shadow:
+            0 0 10px rgba(255, 255, 255, 0.3),
+            0 0 20px rgba(255, 255, 255, 0.2);
+        }
+        50% {
+          opacity: 1;
+          transform: translateX(-50%) scale(1);
+          text-shadow:
+            0 0 15px rgba(255, 255, 255, 0.5),
+            0 0 30px rgba(255, 255, 255, 0.3),
+            0 0 40px rgba(100, 149, 237, 0.3);
+        }
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.8);
+        opacity: 0;
+        transition: opacity 0.5s;
+        pointer-events: none;
+        z-index: 500;
+      }
+
+      .menu.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .menu nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        text-align: center;
+      }
+
+      .menu nav ul li {
+        margin: 2rem 0;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all 0.3s;
+      }
+
+      .menu.visible nav ul li {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .menu nav ul li a {
+        font-family: "Rajdhani", sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: white;
+        text-decoration: none;
+        font-size: 2rem;
+        transition: color 0.3s;
+      }
+
+      .menu nav ul li a:hover {
+        color: #f0f0f0;
+      }
+
+      .menu nav ul li a.strike {
+        text-decoration: line-through;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+    </style>
+
+    <script>
+      import { Scene } from "../components/Scene";
+      import { showMenu, setupHomePage, handleUserTrigger } from "../utils/menuState.js";
+
+      let sceneInstance: Scene | undefined;
+      let menuVisible = false;
+
+      // Initialize the scene on first page load
+      function initScene() {
+        const container = document.getElementById("scene-container");
+        if (container && !document.querySelector("#scene-container canvas")) {
+          console.log("Initializing Scene");
+          const scene = new Scene(container);
+          sceneInstance = scene;
+        }
+      }
+
+      // Setup menu handlers
+      function setupMenuHandlers() {
+        const menu = document.getElementById("menu");
+        if (!menu) return;
+
+        // Handle navigation clicks for all menu items
+        const navLinks = document.querySelectorAll(
+          ".menu nav ul li a:not(.strike)"
+        );
+        navLinks.forEach((link) => {
+          link.addEventListener("click", () => {
+            if (!link.classList.contains("strike")) {
+              menuVisible = false;
+              menu.classList.remove("visible");
+            }
+          });
+        });
+
+        // Handle the space key or logo click to show menu initially
+        const handleContinue = () => {
+          // Use the handleUserTrigger function from menuState.js
+          if (handleUserTrigger()) {
             menuVisible = true;
           }
-        }, 500); // Short delay to ensure transition effects work
-      }
-      // For other cases, restore previous state
-      else if (wasMenuVisible && menu) {
-        menu.classList.add('visible');
-      }
-    });
+        };
 
-    // Handle navigation clicks
-    const navLinks = document.querySelectorAll('.menu nav ul li a:not(.strike)');
-    navLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        if (!link.classList.contains('strike')) {
-          menuVisible = false;
-          if (menu) {
-            menu.classList.remove('visible');
+        // Add global space key handler
+        document.addEventListener("keydown", (e) => {
+          if (e.code === "Space") {
+            handleContinue();
+          }
+        });
+
+        // Handle logo click (via event delegation)
+        document.addEventListener("click", (e) => {
+          // Check if we clicked the 3D logo (using raycasting in Scene.ts)
+          // This is handled in Scene.ts, but we can provide a fallback here
+          if (
+            (e.target as HTMLElement).id === "scene-container" ||
+            (e.target as HTMLElement).tagName === "CANVAS"
+          ) {
+            handleContinue();
+          }
+        });
+      }
+
+      // Check if we're on the home page
+      function isHomePage() {
+        return (
+          window.location.pathname === "/" || window.location.pathname === ""
+        );
+      }
+
+      // When transitioning between pages
+      document.addEventListener("astro:before-navigation", (e) => {
+        // Prepare scene for transition
+        if (sceneInstance) {
+          sceneInstance.prepareForTransition();
+        }
+      });
+
+      // After navigation completes
+      document.addEventListener("astro:after-navigation", () => {
+        // If we're on the home page, show the menu
+        if (isHomePage()) {
+          console.log("after-navigation: On home page, showing menu");
+          setupHomePage();
+        }
+      });
+
+      // Initial page load
+      document.addEventListener("DOMContentLoaded", () => {
+        initScene();
+        setupMenuHandlers();
+
+        // If we're on the home page, show the menu
+        if (isHomePage()) {
+          console.log("DOMContentLoaded: On home page, setting up");
+          setupHomePage();
+        }
+      });
+
+      // After any component updates
+      document.addEventListener("astro:load", () => {
+        // Reinitialize scene if needed
+        if (!document.querySelector("#scene-container canvas")) {
+          initScene();
+        }
+
+        setupMenuHandlers();
+
+        // If we're on the home page, check if we need to show the menu
+        if (isHomePage()) {
+          console.log("astro:load: On home page, checking menu");
+          const continuePrompt = document.getElementById("continue-prompt");
+          const menu = document.getElementById("menu");
+
+          if (
+            continuePrompt &&
+            continuePrompt.classList.contains("hidden") &&
+            menu &&
+            !menu.classList.contains("visible")
+          ) {
+            console.log(
+              "Auto-showing menu because intro animation is complete"
+            );
+            showMenu();
           }
         }
       });
-    });
 
-    // Listen for back-to-home links (specially handle these to show menu)
-    document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('back-button') &&
-          e.target.getAttribute('href') === '/') {
-        sessionStorage.setItem('showMenuOnReturn', 'true');
-      }
-    });
-  }
-
-  // Initial load
-  document.addEventListener('DOMContentLoaded', () => {
-    initScene();
-    setupMenuHandlers();
-    // Check if we should show menu (for example, if returning from another page)
-    if (sessionStorage.getItem('showMenuOnReturn') === 'true') {
-      sessionStorage.removeItem('showMenuOnReturn');
-      setTimeout(checkMenuVisibility, 800); // Delay to allow transitions
-    }
-  });
-
-  // After navigation
-  document.addEventListener('astro:load', () => {
-    // Reinitialize scene if needed
-    if (!document.querySelector('#scene-container canvas')) {
-      initScene();
-    }
-    setupMenuHandlers();
-    checkMenuVisibility();
-  });
-</script>
+      // Listen for view transitions end to ensure menu is visible when needed
+      document.addEventListener("astro:page-load", () => {
+        if (isHomePage()) {
+          console.log("astro:page-load: On home page, final check");
+          setupHomePage();
+        }
+      });
+    </script>
+  </body>
+</html>
