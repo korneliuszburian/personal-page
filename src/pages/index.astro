@@ -1,18 +1,52 @@
 ---
-import Layout from "../layouts/Layout.astro";
+import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Welcome to Astro.">
-  <article class="wrapper flow">
-    <h1>CUBE CSS core setup</h1>
-    <div class="switcher">
-      <h2 class="text-primary">A heading and paragraph in two columns</h2>
-      <p>
-        Donec sed odio dui. Donec sed odio dui. Vivamus sagittis lacus vel augue
-        laoreet rutrum faucibus dolor auctor. Vivamus sagittis lacus vel augue
-        laoreet rutrum faucibus dolor auctor. Praesent commodo cursus magna, vel
-        scelerisque nisl consectetur et.
-      </p>
+<Layout title="3D Card Game Shop">
+  <main>
+    <div id="page-content" class="content-container">
+      <!-- Page content here -->
     </div>
-  </article>
+  </main>
 </Layout>
+
+<script>
+  import { Scene } from '../components/Scene';
+  let sceneInstance: Scene;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('scene-container');
+    if (container) {
+      sceneInstance = new Scene(container);
+    }
+  });
+
+  // Handle Astro view transitions
+  document.addEventListener('astro:before-preparation', () => {
+    if (sceneInstance) {
+      sceneInstance.prepareForTransition();
+    }
+  });
+</script>
+
+<style>
+  main {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    background: #000;
+  }
+
+  :global(canvas) {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    outline: none;
+  }
+
+  .content-container {
+    position: relative;
+    z-index: 2;
+  }
+</style>
