@@ -17,15 +17,15 @@
     "@astrojs/partytown": "^2.1.2",
     "@astrojs/sitemap": "^3.2.1",
     "@astrojs/tailwind": "^5.1.4",
+    "@types/animejs": "^3.1.12",
+    "animejs": "^3.2.1",
     "astro": "^5.1.1",
     "slugify": "^1.6.6",
     "tailwindcss": "^3.4.1",
-    "three": "^0.160.0",
-    "animejs": "^3.2.1",
-    "@types/three": "^0.160.0",
-    "@types/animejs": "^3.1.12"
+    "three": "^0.160.0"
   },
   "devDependencies": {
+    "@types/three": "^0.174.0",
     "prettier": "^3.2.5",
     "prettier-plugin-astro": "^0.13.0",
     "typescript": "^5.3.3"
