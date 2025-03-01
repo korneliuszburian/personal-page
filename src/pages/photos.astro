@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="Photos | 3D Card Game Shop">
+<Layout title="Photos | Thrifted streetwear shop">
   <div class="photos-container">
     <div class="photos-header">
       <h1>Photo Gallery</h1>
@@ -10,19 +10,27 @@ import Layout from '../layouts/Layout.astro';
 
     <div class="photos-grid">
       <div class="photo-item">
-        <img src="https://source.unsplash.com/random/800x600?fantasy-cards" alt="Fantasy cards" />
+        <img src="https://img.freepik.com/free-vector/hand-drawn-matisse-style-illustration_23-2149569710.jpg?t=st=1740863882~exp=1740867482~hmac=6e3d92db1518edc3a4d0b5b5a35aa3a7a19ed441fa85dab3d2affb7697539349&w=740" alt="Fantasy cards" />
         <div class="photo-caption">Fantasy Collection</div>
       </div>
       <div class="photo-item">
-        <img src="https://source.unsplash.com/random/800x600?card-game" alt="Card game" />
+        <img src="https://img.freepik.com/free-vector/hand-drawn-matisse-style-illustration_23-2149587976.jpg?t=st=1740862298~exp=1740865898~hmac=b864d9a601321fc767eee479f266893401ee4d2df748a8a0b8099b64be36fe39&w=740" alt="Card game" />
         <div class="photo-caption">Tournament Series</div>
       </div>
       <div class="photo-item">
-        <img src="https://source.unsplash.com/random/800x600?trading-cards" alt="Trading cards" />
+        <img src="https://img.freepik.com/free-vector/abstract-female-portrait-made-different-shapes_23-2149126821.jpg?t=st=1740863207~exp=1740866807~hmac=76d19808c0afa3df81c0741231ff6f09b45eecbe73caaf3082dbbfcf4cd3bbcb&w=740" alt="Trading cards" />
         <div class="photo-caption">Limited Edition</div>
       </div>
       <div class="photo-item">
-        <img src="https://source.unsplash.com/random/800x600?game-night" alt="Game night" />
+        <img src="https://img.freepik.com/free-vector/hand-drawn-picasso-style-illustration_23-2149602595.jpg?t=st=1740863890~exp=1740867490~hmac=019c3c6037c207bf001290e43da83e06b5ab075fb1f38c8357923e6b554552ac&w=1060" alt="Game night" />
+        <div class="photo-caption">Game Night</div>
+      </div>
+      <div class="photo-item">
+        <img src="https://img.freepik.com/free-vector/hand-drawn-flat-abstract-shapes-collection_23-2149085348.jpg?t=st=1740863893~exp=1740867493~hmac=3719b5d78cd491929bc8275ed968419491b209f122ea53f33820c04f90e1c489&w=740" alt="Game night" />
+        <div class="photo-caption">Game Night</div>
+      </div>
+      <div class="photo-item">
+        <img src="https://img.freepik.com/free-vector/flat-design-geometric-pattern-illustration_23-2150010041.jpg?t=st=1740863897~exp=1740867497~hmac=71cd7c54211a7809daec097a498c20e1aa307b794959936f53e99964f678c3bc&w=740" alt="Game night" />
         <div class="photo-caption">Game Night</div>
       </div>
     </div>
@@ -30,16 +38,13 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-  // Handle the back button click to ensure menu is shown when returning to home
-  document.addEventListener('DOMContentLoaded', () => {
-    const backButton = document.getElementById('back-to-home');
-    if (backButton) {
-      backButton.addEventListener('click', (e) => {
-        // Set a flag in sessionStorage to indicate we're returning to home
-        sessionStorage.setItem('showMenuOnReturn', 'true');
-      });
-    }
-  });
+import { initializeBackButton } from '../utils/menuState.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Initialize the back button handling
+  initializeBackButton();
+  // No need for additional event listeners as it's handled in initializeBackButton
+});
 </script>
 
 <style>
