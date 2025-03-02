@@ -38,12 +38,17 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-import { initializeBackButton } from '../utils/menuState.js';
+import { AppState } from '../utils/AppState';
+import { EventHandler } from '../utils/EventHandler';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize the back button handling
-  initializeBackButton();
-  // No need for additional event listeners as it's handled in initializeBackButton
+  // Initialize back button handling
+  EventHandler.initializeBackButton();
+  
+  // Set correct app state for subpage
+  if (!AppState.isHomePage()) {
+    AppState.transitionTo('SUBPAGE');
+  }
 });
 </script>
 

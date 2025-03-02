@@ -34,7 +34,7 @@ const { title } = Astro.props;
       <div class="loader"></div>
     </div>
 
-    <!-- Three.js scene container - this is just for the 3D background -->
+    <!-- Three.js scene container -->
     <div id="scene-container" transition:persist>
       <!-- Three.js canvas will be inserted here -->
     </div>
@@ -56,7 +56,7 @@ const { title } = Astro.props;
       </nav>
     </div>
 
-    <!-- Page content container - separate from the 3D background -->
+    <!-- Page content container -->
     <main id="page-content">
       <slot />
     </main>
@@ -210,138 +210,99 @@ const { title } = Astro.props;
     </style>
 
     <script>
+      import { EventHandler } from "../utils/EventHandler";
       import { Scene } from "../components/Scene";
-      import { showMenu, setupHomePage, handleUserTrigger } from "../utils/menuState.js";
 
-      let sceneInstance: Scene | undefined;
-      let menuVisible = false;
+      // Ensure we have a global type declaration for sceneInstance
+      if (typeof window !== "undefined") {
+        window.sceneInstance = window.sceneInstance || null;
+        window.navBackToHome = window.navBackToHome || false;
+      }
 
-      // Initialize the scene on first page load
+      // Initialize the scene and event handlers
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("DOM ready, initializing scene and handlers");
+
+        // Initialize scene first
+        initScene();
+
+        // Then set up event handlers
+        if (typeof EventHandler.initialize === "function") {
+          EventHandler.initialize();
+        }
+      });
+
+      // Create the 3D scene
       function initScene() {
         const container = document.getElementById("scene-container");
         if (container && !document.querySelector("#scene-container canvas")) {
-          console.log("Initializing Scene");
-          const scene = new Scene(container);
-          sceneInstance = scene;
+          console.log("Creating new Scene instance");
+          new Scene(container); // Scene registers itself as window.sceneInstance
         }
       }
 
-      // Setup menu handlers
-      function setupMenuHandlers() {
-        const menu = document.getElementById("menu");
-        if (!menu) return;
-
-        // Handle navigation clicks for all menu items
-        const navLinks = document.querySelectorAll(
-          ".menu nav ul li a:not(.strike)"
-        );
-        navLinks.forEach((link) => {
-          link.addEventListener("click", () => {
-            if (!link.classList.contains("strike")) {
-              menuVisible = false;
-              menu.classList.remove("visible");
-            }
-          });
-        });
-
-        // Handle the space key or logo click to show menu initially
-        const handleContinue = () => {
-          // Use the handleUserTrigger function from menuState.js
-          if (handleUserTrigger()) {
-            menuVisible = true;
-          }
-        };
-
-        // Add global space key handler
-        document.addEventListener("keydown", (e) => {
-          if (e.code === "Space") {
-            handleContinue();
-          }
-        });
-
-        // Handle logo click (via event delegation)
-        document.addEventListener("click", (e) => {
-          // Check if we clicked the 3D logo (using raycasting in Scene.ts)
-          // This is handled in Scene.ts, but we can provide a fallback here
-          if (
-            (e.target as HTMLElement).id === "scene-container" ||
-            (e.target as HTMLElement).tagName === "CANVAS"
-          ) {
-            handleContinue();
-          }
-        });
-      }
-
-      // Check if we're on the home page
-      function isHomePage() {
-        return (
-          window.location.pathname === "/" || window.location.pathname === ""
-        );
-      }
-
-      // When transitioning between pages
-      document.addEventListener("astro:before-navigation", (e) => {
+      // Handle page transitions
+      document.addEventListener("astro:before-navigation", () => {
         // Prepare scene for transition
-        if (sceneInstance) {
-          sceneInstance.prepareForTransition();
+        if (
+          window.sceneInstance &&
+          typeof window.sceneInstance.prepareForTransition === "function"
+        ) {
+          window.sceneInstance.prepareForTransition();
         }
       });
 
-      // After navigation completes
       document.addEventListener("astro:after-navigation", () => {
-        // If we're on the home page, show the menu
-        if (isHomePage()) {
-          console.log("after-navigation: On home page, showing menu");
-          setupHomePage();
-        }
-      });
+        // Check if we navigated back to home from a subpage
+        const isBackToHome =
+          window.navBackToHome &&
+          (window.location.pathname === "/" || window.location.pathname === "");
 
-      // Initial page load
-      document.addEventListener("DOMContentLoaded", () => {
-        initScene();
-        setupMenuHandlers();
-
-        // If we're on the home page, show the menu
-        if (isHomePage()) {
-          console.log("DOMContentLoaded: On home page, setting up");
-          setupHomePage();
-        }
-      });
-
-      // After any component updates
-      document.addEventListener("astro:load", () => {
-        // Reinitialize scene if needed
-        if (!document.querySelector("#scene-container canvas")) {
-          initScene();
-        }
-
-        setupMenuHandlers();
-
-        // If we're on the home page, check if we need to show the menu
-        if (isHomePage()) {
-          console.log("astro:load: On home page, checking menu");
-          const continuePrompt = document.getElementById("continue-prompt");
-          const menu = document.getElementById("menu");
-
-          if (
-            continuePrompt &&
-            continuePrompt.classList.contains("hidden") &&
-            menu &&
-            !menu.classList.contains("visible")
-          ) {
-            console.log(
-              "Auto-showing menu because intro animation is complete"
-            );
-            showMenu();
+        if (isBackToHome && window.sceneInstance) {
+          // Use the special back-to-home handler
+          if (typeof window.sceneInstance.handleReturnToHome === "function") {
+            window.sceneInstance.handleReturnToHome();
+          } else {
+            // Fallback to regular reset
+            window.sceneInstance.resetTransitionState();
           }
+
+          // Reset the flag
+          window.navBackToHome = false;
+        } else if (window.sceneInstance) {
+          // Regular navigation reset
+          window.sceneInstance.resetTransitionState();
         }
       });
 
-      // Listen for view transitions end to ensure menu is visible when needed
       document.addEventListener("astro:page-load", () => {
-        if (isHomePage()) {
-          console.log("astro:page-load: On home page, final check");
-          setupHomePage();
+        console.log("Page fully loaded, ensuring handlers are active");
+
+        const isHomePage =
+          window.location.pathname === "/" || window.location.pathname === "";
+
+        // Always reinitialize event handlers after page load
+        if (typeof EventHandler.initialize === "function") {
+          EventHandler.initialize();
+        }
+
+        // Force a final state reset on the scene
+        if (window.sceneInstance) {
+          if (isHomePage) {
+            console.log("Home page loaded - ensuring proper state");
+
+            // Make sure event handlers are active
+            setTimeout(() => {
+              if (typeof EventHandler.initialize === "function") {
+                EventHandler.initialize();
+              }
+
+              // Make sure scene is ready for interaction
+              if (window.sceneInstance) {
+                window.sceneInstance.resetTransitionState();
+              }
+            }, 100);
+          }
         }
       });
     </script>

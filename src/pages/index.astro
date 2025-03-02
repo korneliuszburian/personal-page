@@ -7,10 +7,23 @@ import Layout from "../layouts/Layout.astro";
 </Layout>
 
 <script>
-  import { initializeBackButton } from "../utils/menuState.js";
+  import { AppState } from "../utils/AppState";
+  import { EventHandler } from "../utils/EventHandler";
 
   document.addEventListener("DOMContentLoaded", () => {
-    initializeBackButton();
+    // Make sure global scene instance is accessible
+    if (typeof window !== 'undefined' && window.sceneInstance) {
+      // Already assigned in Scene constructor
+    }
+    
+    // Initialize back button handling
+    EventHandler.initializeBackButton();
+    
+    // Ensure we're in the correct state on the home page
+    if (AppState.isHomePage()) {
+      // Reset any stored transition state
+      AppState.resetSceneTransitionState();
+    }
   });
 </script>
 
