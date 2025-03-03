@@ -928,24 +928,24 @@ export class Scene {
 
             if (typeof window.AnimationManager.animateLogoForPageTransition === 'function') {
                 window.AnimationManager.animateLogoForPageTransition(this.logo, this.transitionDirection, () => {
-                    // this.resetTransitionState();
+                    this.resetTransitionState();
                 });
                 return; // Early return if AnimationManager handles transition
             }
         }
 
         // Fallback transitions if AnimationManager not available
-        // if (this.distortionPass) {
-        //     anime({
-        //         targets: this.distortionPass.uniforms.uDistortionAmount,
-        //         value: [0, 0.2, 0],
-        //         duration: 1000,
-        //         easing: 'easeInOutQuad'
-        //     });
-        // }
+        if (this.distortionPass) {
+            anime({
+                targets: this.distortionPass.uniforms.uDistortionAmount,
+                value: [0, 0.2, 0],
+                duration: 1000,
+                easing: 'easeInOutQuad'
+            });
+        }
 
-        // anime.remove(this.logo.position);
-        // anime.remove(this.logo.rotation);
+        anime.remove(this.logo.position);
+        anime.remove(this.logo.rotation);
 
         // Page transition animation
         // if (this.transitionDirection === 'out') {
@@ -989,7 +989,7 @@ export class Scene {
 
         // Make sure we reset transition state after animation
         setTimeout(() => {
-            // this.resetTransitionState();
+            this.resetTransitionState();
         }, 200);
     }
 
