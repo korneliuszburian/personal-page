@@ -928,7 +928,7 @@ export class Scene {
 
             if (typeof window.AnimationManager.animateLogoForPageTransition === 'function') {
                 window.AnimationManager.animateLogoForPageTransition(this.logo, this.transitionDirection, () => {
-                    this.resetTransitionState();
+                    // this.resetTransitionState();
                 });
                 return; // Early return if AnimationManager handles transition
             }
@@ -989,7 +989,7 @@ export class Scene {
 
         // Make sure we reset transition state after animation
         setTimeout(() => {
-            this.resetTransitionState();
+            // this.resetTransitionState();
         }, 200);
     }
 
