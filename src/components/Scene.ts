@@ -163,11 +163,20 @@ export class Scene {
     /**
      * Animate the menu away when navigating
      */
-    private animateMenuAway() {
+    public animateMenuAway() {
         const menu = document.getElementById('menu');
         if (!menu || !menu.classList.contains('visible')) return;
 
-        // Animate menu items out
+        console.log("Animating menu away");
+
+        // Use AnimationManager if available
+        if (window.AnimationManager && typeof window.AnimationManager.animateMenuOut === 'function') {
+            window.AnimationManager.animateMenuOut(menu);
+            this.isMenuOpen = false;
+            return;
+        }
+
+        // Fallback animation
         anime({
             targets: '.menu nav ul li',
             translateY: [0, -20],
@@ -177,7 +186,6 @@ export class Scene {
             easing: 'easeOutQuad'
         });
 
-        // Then fade out menu
         anime({
             targets: menu,
             opacity: 0,
@@ -186,6 +194,7 @@ export class Scene {
             complete: () => {
                 menu.classList.add('hidden');
                 menu.classList.remove('visible');
+                this.isMenuOpen = false;
             }
         });
     }
@@ -237,61 +246,56 @@ export class Scene {
         this.secondaryBeamMesh.scale.set(1.8, 1.2, 1.8);
         this.scene.add(this.secondaryBeamMesh);
 
+        // Important: Set camera position with proper distance
         this.camera.position.set(0, 1, 12);
         this.camera.lookAt(0, 0, 0);
 
+        // Load the logo model
+        this.loadLogo();
+    }
+
+    /**
+     * Load the 3D logo model
+     */
+    private loadLogo() {
         const loader = new GLTFLoader();
         const modelPath = '/glass-like-logo-2.glb';
         console.log('Loading model from:', modelPath);
 
         loader.load(
+            // Model path
             modelPath,
+
+            // Success callback
             (gltf) => {
                 console.log('Model loaded successfully');
                 this.logo = gltf.scene;
 
+                // Calculate bounding box for proper positioning
                 const box = new THREE.Box3().setFromObject(this.logo);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
 
                 const maxDim = Math.max(size.x, size.y, size.z);
                 const scale = 6 / maxDim;
+
+                // Scale the model to a reasonable size
                 this.logo.scale.setScalar(scale);
 
+                // Position the logo properly (center it)
                 this.logo.position.sub(center.multiplyScalar(scale));
+
+                // Add to scene
                 this.scene.add(this.logo);
 
-                this.cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
-                this.cubeCamera = new THREE.CubeCamera(1, 1000, this.cubeRenderTarget);
-                this.scene.add(this.cubeCamera);
+                // Setup environment mapping for reflections
+                this.setupEnvironmentMapping();
 
-                const envLight = new THREE.HemisphereLight(0xffffff, 0x404040, 0.8);
-                this.scene.add(envLight);
-
-                const logoMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xaaccff,
-                    metalness: 0.85,
-                    roughness: 0.2,
-                    reflectivity: 0.8,
-                    clearcoat: 0.8,
-                    clearcoatRoughness: 0.2,
-                    envMap: this.cubeRenderTarget.texture,
-                    envMapIntensity: 1.0,
-                    emissive: 0x101020,
-                    emissiveIntensity: 0.1
-                });
-
-                this.logo.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        child.material = logoMaterial;
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-
+                // Store initial position and rotation for reference
                 this.initialLogoPosition = this.logo.position.clone();
                 this.initialLogoRotation = this.logo.rotation.clone();
 
+                // Hide loading screen
                 this.hideLoadingScreen();
 
                 // Only show continue prompt on home page
@@ -299,49 +303,104 @@ export class Scene {
                     this.showContinuePrompt();
                 }
 
-                // Create a subtle entrance animation
-                this.logo.scale.set(0.01, 0.01, 0.01);
-                this.logo.rotation.y = Math.PI * 2;
-                anime({
-                    targets: this.logo.scale,
-                    x: scale,
-                    y: scale,
-                    z: scale,
-                    duration: 1500,
-                    easing: 'easeOutElastic(1, 0.5)'
-                });
-                anime({
-                    targets: this.logo.rotation,
-                    y: 0,
-                    duration: 1500,
-                    easing: 'easeOutQuad'
-                });
+                // Use AnimationManager to animate entrance if available
+                if (window.AnimationManager && typeof window.AnimationManager.animateLogoEntrance === 'function') {
+                    window.AnimationManager.animateLogoEntrance(this.logo);
+                } else {
+                    // Fallback entrance animation
+                    this.logo.scale.set(0.01, 0.01, 0.01);
+                    this.logo.rotation.y = Math.PI * 2;
+
+                    anime({
+                        targets: this.logo.scale,
+                        x: scale,
+                        y: scale,
+                        z: scale,
+                        duration: 1500,
+                        easing: 'easeOutElastic(1, 0.5)'
+                    });
+
+                    anime({
+                        targets: this.logo.rotation,
+                        y: 0,
+                        duration: 1500,
+                        easing: 'easeOutQuad'
+                    });
+                }
             },
+
+            // Progress callback
             (progress) => {
                 const percentComplete = (progress.loaded / progress.total) * 100;
                 console.log('Loading progress:', percentComplete.toFixed(2) + '%');
             },
+
+            // Error callback
             (error) => {
                 console.error('Error loading model:', error);
-                this.hideLoadingScreen();
-
-                // Create a simple fallback cube
-                const geometry = new THREE.BoxGeometry(2, 2, 2);
-                const material = new THREE.MeshStandardMaterial({ color: 0x6666ff, metalness: 0.8 });
-                const cube = new THREE.Mesh(geometry, material);
-                this.scene.add(cube);
-                this.logo = new THREE.Group();
-                this.logo.add(cube);
-                this.scene.add(this.logo);
-                this.initialLogoPosition = this.logo.position.clone();
-                this.initialLogoRotation = this.logo.rotation.clone();
-
-                // Only show continue prompt on home page
-                if (isHomePage()) {
-                    this.showContinuePrompt();
-                }
+                this.createFallbackLogo();
             }
         );
+    }
+
+    /**
+     * Create a fallback cube if model loading fails
+     */
+    private createFallbackLogo() {
+        console.log('Creating fallback logo');
+        this.hideLoadingScreen();
+
+        // Create a simple cube as fallback
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshStandardMaterial({ color: 0x6666ff, metalness: 0.8 });
+        const cube = new THREE.Mesh(geometry, material);
+
+        this.logo = new THREE.Group();
+        this.logo.add(cube);
+        this.scene.add(this.logo);
+
+        this.initialLogoPosition = this.logo.position.clone();
+        this.initialLogoRotation = this.logo.rotation.clone();
+
+        // Show continue prompt on home page
+        if (isHomePage()) {
+            this.showContinuePrompt();
+        }
+    }
+
+    /**
+     * Set up environment mapping for the logo
+     */
+    private setupEnvironmentMapping() {
+        if (!this.logo) return;
+
+        this.cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+        this.cubeCamera = new THREE.CubeCamera(1, 1000, this.cubeRenderTarget);
+        this.scene.add(this.cubeCamera);
+
+        const envLight = new THREE.HemisphereLight(0xffffff, 0x404040, 0.8);
+        this.scene.add(envLight);
+
+        const logoMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xaaccff,
+            metalness: 0.85,
+            roughness: 0.2,
+            reflectivity: 0.8,
+            clearcoat: 0.8,
+            clearcoatRoughness: 0.2,
+            envMap: this.cubeRenderTarget.texture,
+            envMapIntensity: 1.0,
+            emissive: 0x101020,
+            emissiveIntensity: 0.1
+        });
+
+        this.logo.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.material = logoMaterial;
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
     }
 
     private setupParticles() {
@@ -492,10 +551,11 @@ export class Scene {
         });
     }
 
-    // Updated handleContinue method for Scene.ts
-
+    // Main handler for "continue" action (opening the menu)
     public handleContinue() {
-        // Check if we can open the menu
+        console.log('Scene.handleContinue called');
+
+        // Prevent triggering if menu is already open or transitioning
         if (this.isMenuOpen || this.isTransitioning) {
             console.log('Cannot handle continue: menu open or transitioning', {
                 isMenuOpen: this.isMenuOpen,
@@ -503,38 +563,41 @@ export class Scene {
             });
             return;
         }
-    
+
         // Only handle continue on home page
         if (!isHomePage()) {
             console.log('Cannot handle continue: not on home page');
             return;
         }
-    
+
         console.log('Handling continue action - opening menu with animations');
         this.isTransitioning = true;
         const menu = document.getElementById('menu');
         const prompt = document.getElementById('continue-prompt');
-    
+
         this.isMenuOpen = true;
-    
-        // Store current position for our animations
-        const currentY = this.logo ? this.logo.position.y : 0;
-    
-        // Hide continue prompt with animation
+
+        // Hide continue prompt with animation (using AnimationManager if available)
         if (prompt) {
-            anime({
-                targets: prompt,
-                opacity: [1, 0],
-                translateY: [0, 30],
-                scale: [1, 0.95],
-                duration: 600,
-                easing: 'easeOutExpo',
-                complete: () => prompt.classList.add('hidden')
-            });
+            if (window.AnimationManager && typeof window.AnimationManager.animateContinuePromptOut === 'function') {
+                window.AnimationManager.animateContinuePromptOut(prompt);
+            } else {
+                // Fallback animation
+                anime({
+                    targets: prompt,
+                    opacity: [1, 0],
+                    duration: 600,
+                    easing: 'easeOutExpo',
+                    complete: () => prompt.classList.add('hidden')
+                });
+            }
         }
-    
-        // Start distortion effect during menu animation
-        if (this.distortionPass) {
+
+        // Apply distortion effect (using AnimationManager if available)
+        if (window.AnimationManager && typeof window.AnimationManager.animateDistortion === 'function') {
+            window.AnimationManager.animateDistortion(0.1, 2000, 'menuOpen');
+        } else if (this.distortionPass) {
+            // Fallback animation
             anime({
                 targets: this.distortionPass.uniforms.uDistortionAmount,
                 value: [0, 0.1, 0],
@@ -542,90 +605,91 @@ export class Scene {
                 easing: 'easeInOutQuad'
             });
         }
-    
-        // Only animate logo if it exists
+
+        // Animate logo if it exists (using AnimationManager if available)
         if (this.logo) {
-            const timeline = anime.timeline({
-                easing: 'easeInOutQuad'
-            });
-    
-            timeline
-                .add({
-                    targets: this.logo.position,
-                    y: currentY + 3,
-                    duration: 1200,
-                    easing: 'easeOutQuad'
-                })
-                .add({
-                    targets: this.logo.rotation,
-                    y: Math.PI * 3,
-                    duration: 1200,
-                    easing: 'easeInOutQuad'
-                }, '-=1200')
-                .add({
-                    targets: this.logo.position,
-                    y: currentY - 1,
-                    duration: 800,
-                    easing: 'easeOutBounce'
-                })
-                .add({
-                    targets: this.logo.rotation,
-                    y: Math.PI * 4,
-                    duration: 1000,
-                    easing: 'easeOutQuad'
-                }, '-=800')
-                .add({
-                    targets: '#continue-prompt',
-                    opacity: 0,
-                    duration: 300
-                }, '-=1000')
-                .add({
-                    begin: () => {
-                        if (menu) {
-                            // IMPORTANT FIX: Clear any inline opacity style before showing the menu
-                            menu.style.opacity = '';
-                            
-                            // Ensure menu is visible first
-                            menu.classList.remove('hidden');
-                            menu.classList.add('visible');
-    
-                            // FIXED: Explicitly reset menu item styles
-                            const menuItems = menu.querySelectorAll('nav ul li');
-                            menuItems.forEach(item => {
-                                (item as HTMLElement).style.opacity = '1';
-                                (item as HTMLElement).style.transform = 'translateY(0)';
-                            });
-                        }
-                    }
-                })
-                .add({
-                    targets: '.menu nav ul li',
-                    translateY: [20, 0],
-                    opacity: [0, 1],
-                    duration: 600,
-                    delay: anime.stagger(80),
-                    complete: () => {
-                        this.isTransitioning = false;
-                        console.log('Menu animation complete, transitioning state:', this.isTransitioning);
-                    }
+            if (window.AnimationManager && typeof window.AnimationManager.animateLogoForMenuOpen === 'function') {
+                window.AnimationManager.animateLogoForMenuOpen(this.logo, () => {
+                    // After logo animation completes, show menu
+                    this.showMenu(menu);
                 });
-        } else {
-            // If no logo, just show the menu
-            if (menu) {
-                // IMPORTANT FIX: Clear any inline opacity style before showing the menu
-                menu.style.opacity = '';
-                
-                menu.classList.remove('hidden');
-                menu.classList.add('visible');
-    
-                // FIXED: Explicitly reset menu item styles
-                const menuItems = menu.querySelectorAll('nav ul li');
-                menuItems.forEach(item => {
-                    (item as HTMLElement).style.opacity = '1';
-                    (item as HTMLElement).style.transform = 'translateY(0)';
+            } else {
+                // Fallback animation
+                this.animateLogoForMenuOpenFallback(() => {
+                    // After logo animation completes, show menu
+                    this.showMenu(menu);
                 });
             }
-    
+        } else {
+            // No logo, just show the menu
+            this.showMenu(menu);
+        }
+    }
+
+    /**
+     * Fallback animation for logo when opening menu
+     */
+    private animateLogoForMenuOpenFallback(onComplete = null) {
+        if (!this.logo) return;
+
+        const currentY = this.logo.position.y;
+
+        const timeline = anime.timeline({
+            easing: 'easeInOutQuad'
+        });
+
+        timeline
+            .add({
+                targets: this.logo.position,
+                y: currentY + 3,
+                duration: 1200,
+                easing: 'easeOutQuad'
+            })
+            .add({
+                targets: this.logo.rotation,
+                y: Math.PI * 3,
+                duration: 1200,
+                easing: 'easeInOutQuad'
+            }, '-=1200')
+            .add({
+                targets: this.logo.position,
+                y: currentY - 1,
+                duration: 800,
+                easing: 'easeOutBounce'
+            })
+            .add({
+                targets: this.logo.rotation,
+                y: Math.PI * 4,
+                duration: 1000,
+                easing: 'easeOutQuad',
+                complete: () => {
+                    if (onComplete) onComplete();
+                }
+            }, '-=800');
+    }
+
+    /**
+     * Show the menu with animation
+     */
+    private showMenu(menu) {
+        if (!menu) return;
+
+        if (window.AnimationManager && typeof window.AnimationManager.animateMenuIn === 'function') {
+            window.AnimationManager.animateMenuIn(menu, () => {
+                this.isTransitioning = false;
+            });
+        } else {
+            // Fallback animation
+            menu.classList.remove('hidden');
+            menu.classList.add('visible');
+
+            // Reset menu items for animation
+            const menuItems = menu.querySelectorAll('nav ul li');
+            menuItems.forEach(item => {
+                (item as HTMLElement).style.opacity = '0';
+                (item as HTMLElement).style.transform = 'translateY(20px)';
+            });
+
             anime({
                 targets: '.menu nav ul li',
                 translateY: [20, 0],
@@ -638,91 +702,42 @@ export class Scene {
             });
         }
     }
+
+    /**
+     * Close the menu with animations
+     */
     public closeMenu() {
         if (this.isTransitioning) {
             console.log('Cannot close menu: transitioning');
             return;
         }
-    
+
         if (!this.isMenuOpen) {
             console.log('Cannot close menu: menu not open');
             return;
         }
-    
+
         this.isTransitioning = true;
-    
         const menu = document.getElementById('menu');
-    
-        // Only animate logo if it exists and we're on the home page
-        if (this.logo && isHomePage()) {
-            const currentY = this.logo.position.y;
-    
-            // Add distortion effect when closing menu
-            if (this.distortionPass) {
-                anime({
-                    targets: this.distortionPass.uniforms.uDistortionAmount,
-                    value: [0, 0.15, 0],
-                    duration: 1500,
-                    easing: 'easeInOutQuad'
-                });
-            }
-    
-            const closeTimeline = anime.timeline({
+
+        // Apply distortion effect (using AnimationManager if available)
+        if (window.AnimationManager && typeof window.AnimationManager.animateDistortion === 'function') {
+            window.AnimationManager.animateDistortion(0.15, 1500, 'menuClose');
+        } else if (this.distortionPass) {
+            // Fallback animation
+            anime({
+                targets: this.distortionPass.uniforms.uDistortionAmount,
+                value: [0, 0.15, 0],
+                duration: 1500,
                 easing: 'easeInOutQuad'
             });
-    
-            closeTimeline
-                .add({
-                    targets: '.menu nav ul li',
-                    translateY: [0, -20],
-                    opacity: [1, 0],
-                    duration: 400,
-                    delay: anime.stagger(50, { direction: 'reverse' })
-                })
-                .add({
-                    targets: '.menu',
-                    opacity: 0,
-                    duration: 400,
-                    complete: () => {
-                        if (menu) {
-                            menu.classList.add('hidden');
-                            menu.classList.remove('visible');
-                            
-                            // IMPORTANT FIX: Schedule a cleanup of inline styles
-                            setTimeout(() => {
-                                if (menu) menu.style.opacity = '';
-                            }, 100);
-                        }
-                    }
-                })
-                .add({
-                    targets: this.logo.position,
-                    y: currentY + 2,
-                    duration: 800,
-                    easing: 'easeOutQuad'
-                })
-                .add({
-                    targets: this.logo.rotation,
-                    y: this.initialLogoRotation ? this.initialLogoRotation.y : 0,
-                    duration: 1200,
-                    easing: 'easeInOutQuad'
-                }, '-=800')
-                .add({
-                    targets: this.logo.position,
-                    y: this.initialLogoPosition ? this.initialLogoPosition.y : 0,
-                    duration: 1000,
-                    easing: 'easeOutElastic(1, 0.8)',
-                    complete: () => {
-                        this.isTransitioning = false;
-                        this.isMenuOpen = false;
-    
-                        // Show continue prompt again
-                        this.showContinuePrompt();
-                        console.log('Menu closed, transitioning state:', this.isTransitioning);
-                    }
-                });
-        } else {
-            // Simpler animation if no logo or not on home page
+        }
+
+        // Hide menu (using AnimationManager if available)
+        if (menu && window.AnimationManager && typeof window.AnimationManager.animateMenuOut === 'function') {
+            window.AnimationManager.animateMenuOut(menu);
+        } else if (menu) {
+            // Fallback animation
             anime({
                 targets: '.menu nav ul li',
                 translateY: [0, -20],
@@ -730,33 +745,98 @@ export class Scene {
                 duration: 400,
                 delay: anime.stagger(50, { direction: 'reverse' })
             });
-    
+
             anime({
-                targets: '.menu',
+                targets: menu,
                 opacity: 0,
                 duration: 400,
                 complete: () => {
-                    if (menu) {
-                        menu.classList.add('hidden');
-                        menu.classList.remove('visible');
-                        
-                        // IMPORTANT FIX: Schedule a cleanup of inline styles
-                        setTimeout(() => {
-                            if (menu) menu.style.opacity = '';
-                        }, 100);
-                    }
-    
-                    this.isTransitioning = false;
-                    this.isMenuOpen = false;
-    
-                    // Only show continue prompt on home page
-                    if (isHomePage()) {
-                        this.showContinuePrompt();
-                    }
+                    menu.classList.add('hidden');
+                    menu.classList.remove('visible');
+
+                    setTimeout(() => {
+                        if (menu) menu.style.opacity = '';
+                    }, 100);
                 }
             });
         }
+
+        // Animate logo if it exists (using AnimationManager if available)
+        if (this.logo && isHomePage()) {
+            const initialState = {
+                position: this.initialLogoPosition,
+                rotation: this.initialLogoRotation
+            };
+
+            if (window.AnimationManager && typeof window.AnimationManager.animateLogoForMenuClose === 'function') {
+                window.AnimationManager.animateLogoForMenuClose(this.logo, initialState, () => {
+                    this.finishMenuClose();
+                });
+            } else {
+                // Fallback animation
+                this.animateLogoForMenuCloseFallback(() => {
+                    this.finishMenuClose();
+                });
+            }
+        } else {
+            // No logo animation needed
+            setTimeout(() => {
+                this.finishMenuClose();
+            }, 500);
+        }
     }
+
+    /**
+     * Fallback animation for logo when closing menu
+     */
+    private animateLogoForMenuCloseFallback(onComplete = null) {
+        if (!this.logo) return;
+
+        const currentY = this.logo.position.y;
+        const initialY = this.initialLogoPosition ? this.initialLogoPosition.y : 0;
+        const initialRotationY = this.initialLogoRotation ? this.initialLogoRotation.y : 0;
+
+        const timeline = anime.timeline({
+            easing: 'easeInOutQuad'
+        });
+
+        timeline
+            .add({
+                targets: this.logo.position,
+                y: currentY + 2,
+                duration: 800,
+                easing: 'easeOutQuad'
+            })
+            .add({
+                targets: this.logo.rotation,
+                y: initialRotationY,
+                duration: 1200,
+                easing: 'easeInOutQuad'
+            }, '-=800')
+            .add({
+                targets: this.logo.position,
+                y: initialY,
+                duration: 1000,
+                easing: 'easeOutElastic(1, 0.8)',
+                complete: () => {
+                    if (onComplete) onComplete();
+                }
+            });
+    }
+
+    /**
+     * Complete the menu closing process
+     */
+    private finishMenuClose() {
+        this.isTransitioning = false;
+        this.isMenuOpen = false;
+
+        // Show continue prompt again if on home page
+        if (isHomePage()) {
+            this.showContinuePrompt();
+        }
+    }
+
     private animate = () => {
         requestAnimationFrame(this.animate);
 
@@ -797,7 +877,9 @@ export class Scene {
             } else if (!this.isTransitioning) {
                 // Idle state animation
                 this.logo.rotation.y += 0.001;
-                this.logo.position.y = Math.sin(time * 0.5) * 0.1 + Math.sin(time * 0.2) * 0.03;
+                this.logo.position.y = this.initialLogoPosition ?
+                    this.initialLogoPosition.y + Math.sin(time * 0.5) * 0.1 + Math.sin(time * 0.2) * 0.03 :
+                    Math.sin(time * 0.5) * 0.1 + Math.sin(time * 0.2) * 0.03;
                 this.logo.rotation.x = Math.sin(time * 0.3) * 0.02;
                 this.logo.rotation.z = Math.cos(time * 0.2) * 0.02;
 
@@ -838,68 +920,78 @@ export class Scene {
             this.transitionDirection = 'in';
         }
 
-        // Add visual effects during page transitions
-        if (this.distortionPass) {
-            anime({
-                targets: this.distortionPass.uniforms.uDistortionAmount,
-                value: [0, 0.2, 0],
-                duration: 1000,
-                easing: 'easeInOutQuad'
-            });
+        // Use AnimationManager for transition effects if available
+        if (window.AnimationManager) {
+            if (typeof window.AnimationManager.animateDistortion === 'function') {
+                window.AnimationManager.animateDistortion(0.2, 1000, 'transition');
+            }
+
+            if (typeof window.AnimationManager.animateLogoForPageTransition === 'function') {
+                window.AnimationManager.animateLogoForPageTransition(this.logo, this.transitionDirection, () => {
+                    this.resetTransitionState();
+                });
+                return; // Early return if AnimationManager handles transition
+            }
         }
 
-        anime.remove(this.logo.position);
-        anime.remove(this.logo.rotation);
+        // Fallback transitions if AnimationManager not available
+        // if (this.distortionPass) {
+        //     anime({
+        //         targets: this.distortionPass.uniforms.uDistortionAmount,
+        //         value: [0, 0.2, 0],
+        //         duration: 1000,
+        //         easing: 'easeInOutQuad'
+        //     });
+        // }
+
+        // anime.remove(this.logo.position);
+        // anime.remove(this.logo.rotation);
 
         // Page transition animation
-        if (this.transitionDirection === 'out') {
-            anime({
-                targets: this.logo.scale,
-                x: this.logo.scale.x * 0.8,
-                y: this.logo.scale.y * 0.8,
-                z: this.logo.scale.z * 0.8,
-                duration: 500,
-                easing: 'easeInQuad'
-            });
+        // if (this.transitionDirection === 'out') {
+        //     anime({
+        //         targets: this.logo.scale,
+        //         x: this.logo.scale.x * 0.8,
+        //         y: this.logo.scale.y * 0.8,
+        //         z: this.logo.scale.z * 0.8,
+        //         duration: 500,
+        //         easing: 'easeInQuad'
+        //     });
 
-            anime({
-                targets: this.logo.position,
-                y: this.logo.position.y - 2,
-                duration: 500,
-                easing: 'easeInQuad'
-            });
-        } else if (this.logo) {  // Fixed TypeScript null check
-            anime({
-                targets: this.logo.scale,
-                x: this.logo.scale.x * 1.2,
-                y: this.logo.scale.y * 1.2,
-                z: this.logo.scale.z * 1.2,
-                duration: 500,
-                easing: 'easeOutQuad',
-                complete: () => {
-                    if (this.logo) {  // Additional null check for callback
-                        anime({
-                            targets: this.logo.scale,
-                            x: this.logo.scale.x / 1.2,
-                            y: this.logo.scale.y / 1.2,
-                            z: this.logo.scale.z / 1.2,
-                            duration: 800,
-                            easing: 'easeOutElastic(1, 0.5)'
-                        });
-                    }
-                }
-            });
-        }
+        //     anime({
+        //         targets: this.logo.position,
+        //         y: this.logo.position.y - 2,
+        //         duration: 500,
+        //         easing: 'easeInQuad'
+        //     });
+        // } else if (this.logo) {  // Fixed TypeScript null check
+        //     anime({
+        //         targets: this.logo.scale,
+        //         x: this.logo.scale.x * 1.2,
+        //         y: this.logo.scale.y * 1.2,
+        //         z: this.logo.scale.z * 1.2,
+        //         duration: 500,
+        //         easing: 'easeOutQuad',
+        //         complete: () => {
+        //             if (this.logo) {  // Additional null check for callback
+        //                 anime({
+        //                     targets: this.logo.scale,
+        //                     x: this.logo.scale.x / 1.2,
+        //                     y: this.logo.scale.y / 1.2,
+        //                     z: this.logo.scale.z / 1.2,
+        //                     duration: 800,
+        //                     easing: 'easeOutElastic(1, 0.5)'
+        //                 });
+        //             }
+        //         }
+        //     });
+        // }
 
         // Make sure we reset transition state after animation
         setTimeout(() => {
             this.resetTransitionState();
-        }, 800);
+        }, 200);
     }
-
-    // Just the resetTransitionState method update for Scene.ts
-
-    // Corrected resetTransitionState method for Scene.ts
 
     public resetTransitionState() {
         console.log('Explicitly resetting transition state from:', this.isTransitioning, 'to false');
@@ -927,39 +1019,46 @@ export class Scene {
         }
     }
 
-    // A special method to handle returning to the home page from a subpage
     public handleReturnToHome() {
         console.log('Handling return to home page');
-    
+
         // Reset critical state flags
         this.isTransitioning = false;
         this.isMenuOpen = false;
-    
+
         // Reset logo position if needed
         if (this.logo && this.initialLogoPosition && this.initialLogoRotation) {
-            // Cancel any existing animations
-            anime.remove(this.logo.position);
-            anime.remove(this.logo.rotation);
-    
-            // Reset the logo to its initial state
-            this.logo.position.copy(this.initialLogoPosition);
-            this.logo.rotation.copy(this.initialLogoRotation);
-    
+            // Use AnimationManager to reset if available
+            if (window.AnimationManager && typeof window.AnimationManager.resetLogoState === 'function') {
+                window.AnimationManager.resetLogoState(this.logo, {
+                    position: this.initialLogoPosition,
+                    rotation: this.initialLogoRotation
+                });
+            } else {
+                // Cancel any existing animations
+                anime.remove(this.logo.position);
+                anime.remove(this.logo.rotation);
+
+                // Reset the logo to its initial state
+                this.logo.position.copy(this.initialLogoPosition);
+                this.logo.rotation.copy(this.initialLogoRotation);
+            }
+
             // Set balanced lighting values for default state
             this.mainBeam.intensity = 100;
             (this.beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.18;
             (this.secondaryBeamMesh.material as THREE.MeshBasicMaterial).opacity = 0.12;
             this.scene.fog = new THREE.FogExp2(0x000000, 0.004);
         }
-    
-        // IMPORTANT FIX: Reset the menu's inline styles
+
+        // Reset menu state
         const menu = document.getElementById('menu');
         if (menu) {
             // Remove any inline styles that might override CSS transitions
             menu.style.opacity = '';
             menu.classList.remove('visible');
             menu.classList.add('hidden');
-            
+
             // Also reset menu items to ensure they're ready for the next animation
             const menuItems = menu.querySelectorAll('nav ul li');
             menuItems.forEach(item => {
@@ -967,15 +1066,16 @@ export class Scene {
                 (item as HTMLElement).style.transform = '';
             });
         }
-    
+
         // Show continue prompt
         this.showContinuePrompt();
-    
+
         // Force event handler reinitialization
         if (window.EventHandler && typeof window.EventHandler.initialize === 'function') {
             window.EventHandler.initialize();
         }
     }
+
     private handleResize = () => {
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -989,13 +1089,10 @@ export class Scene {
         if (this.logo && this.cubeCamera && this.cubeRenderTarget) {
             // Temporarily hide the logo for environment capture
             this.logo.visible = false;
-
             // Update the cube camera
             this.cubeCamera.update(this.renderer, this.scene);
-
             // Make the logo visible again
             this.logo.visible = true;
-
             // Update the material's environment map for all meshes in the logo
             this.logo.traverse((child) => {
                 if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshPhysicalMaterial) {
@@ -1023,29 +1120,57 @@ export class Scene {
         if (!prompt) return;
 
         prompt.classList.remove('hidden');
-        const text = prompt.textContent || '';
-        prompt.innerHTML = text.split('').map(char =>
-            char === ' ' ? ' ' : `<span>${char}</span>`
-        ).join('');
 
-        anime.timeline({
-            easing: 'easeOutElastic(1, 0.8)'
-        })
-            .add({
-                targets: prompt,
-                opacity: 1,
-                translateY: [30, 0],
-                duration: 800
+        // Use AnimationManager if available
+        if (window.AnimationManager && typeof window.AnimationManager.animateContinuePromptIn === 'function') {
+            window.AnimationManager.animateContinuePromptIn(prompt);
+        } else {
+            // Fallback animation
+            const text = prompt.textContent || '';
+            prompt.innerHTML = text.split('').map(char =>
+                char === ' ' ? ' ' : `<span>${char}</span>`
+            ).join('');
+
+            anime.timeline({
+                easing: 'easeOutElastic(1, 0.8)'
             })
-            .add({
-                targets: '#continue-prompt span',
-                translateY: [-20, 0],
-                opacity: [0, 1],
-                delay: anime.stagger(30),
-                duration: 600,
-                complete: () => {
-                    prompt.style.opacity = '1';
-                }
-            }, '-=400');
+                .add({
+                    targets: prompt,
+                    opacity: 1,
+                    transform: [
+                      { translateX: '-50%', translateY: 30 },
+                      { translateX: '-50%', translateY: 0 }
+                    ],
+                    duration: 800
+                })
+                .add({
+                    targets: '#continue-prompt span',
+                    translateY: [-20, 0],
+                    opacity: [0, 1],
+                    delay: anime.stagger(30),
+                    duration: 600,
+                    complete: () => {
+                        prompt.style.opacity = '1';
+                    }
+                }, '-=400');
+        }
+    }
+
+    /**
+     * Update menu open state
+     */
+    public setMenuState(isOpen: boolean) {
+        this.isMenuOpen = isOpen;
+    }
+}
+
+// Add these to the Window interface for TypeScript
+declare global {
+    interface Window {
+        AnimationManager?: any;
+        AppState?: any;
+        EventHandler?: any;
+        sceneInstance: any;
+        navBackToHome: boolean;
     }
 }

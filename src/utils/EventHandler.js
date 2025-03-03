@@ -1,9 +1,9 @@
 /**
  * EventHandler.js
- * Fixed to ensure proper re-initialization after navigation
+ * Completely fixed version that works with the provided AnimationManager
  */
-
 import * as THREE from 'three';
+import { APP_STATES } from './AppState';
 
 // Simple helper function to check if we're on the home page
 function isHomePage() {
@@ -12,223 +12,380 @@ function isHomePage() {
 
 class EventHandlerClass {
   constructor() {
+    // Event handling state
     this._initialized = false;
-    this._boundHandlers = {
-      keydown: null,
-      click: null,
-      menuBgClick: null,
-      escape: null
-    };
-    
-    // Make this instance globally available
+    this._boundHandlers = {};
+    this._eventListeners = [];
+
+    // Debug mode for detailed logging
+    this._debugMode = true;
+
+    // Make instance globally available
     if (typeof window !== 'undefined') {
       window.EventHandler = this;
     }
   }
-  
+
   /**
    * Initialize all event listeners
    */
   initialize() {
     // Prevent double initialization
     if (this._initialized) {
-      this.cleanup(); // Remove existing handlers first
+      this._log('Already initialized, cleaning up first');
+      this.cleanup();
     }
-    
-    console.log('[EventHandler] Initializing event handlers');
+
+    console.log('Initializing event handlers');
     this._initialized = true;
-    
-    // Bind methods to maintain 'this' context
-    this._boundHandlers.keydown = this.handleKeyDown.bind(this);
-    this._boundHandlers.click = this.handleLogoClick.bind(this);
-    this._boundHandlers.menuBgClick = this.handleMenuBackgroundClick.bind(this);
-    this._boundHandlers.escape = this.handleEscapeKey.bind(this);
-    
-    // Add global event listeners for keyboard
-    document.addEventListener('keydown', this._boundHandlers.keydown);
-    
-    // Add escape key handler
-    document.addEventListener('keydown', this._boundHandlers.escape);
-    
+
+    // Create bound handler functions to maintain context
+    this._bindHandlers();
+
+    // Register global event listeners
+    this._addListener(document, 'keydown', this._boundHandlers.keydown);
+    this._addListener(document, 'keydown', this._boundHandlers.escape);
+
     // Set up scene click detection for logo
     const sceneContainer = document.getElementById('scene-container');
     if (sceneContainer) {
-      sceneContainer.addEventListener('click', this._boundHandlers.click);
+      console.log('Adding click handler to scene container');
+
+      // Remove any existing handlers first
+      sceneContainer.removeEventListener('click', this._boundHandlers.logoClick);
+
+      // Add with capture to ensure we get the event first
+      sceneContainer.addEventListener('click', this._boundHandlers.logoClick, true);
+
+      // Store in our tracking array
+      this._eventListeners.push({
+        element: sceneContainer,
+        eventType: 'click',
+        handler: this._boundHandlers.logoClick
+      });
     }
-    
+
     // Handle menu background clicks
     const menu = document.getElementById('menu');
     if (menu) {
-      menu.addEventListener('click', this._boundHandlers.menuBgClick);
+      this._addListener(menu, 'click', this._boundHandlers.menuBgClick);
     }
-    
+
+    // Handle menu item clicks specifically
+    const menuItems = document.querySelectorAll('.menu nav ul li a:not(.strike)');
+    menuItems.forEach(item => {
+      this._addListener(item, 'click', this._boundHandlers.menuItemClick);
+    });
+
     // Initialize back button
     this.initializeBackButton();
-    
-    // Handle navigation transitions for menu items
-    this.setupMenuNavigationHandling();
-    
-    console.log('[EventHandler] Event handlers initialized');
+
+    // Add direct click handler on logo as backup
+    this._setupDirectLogoClickHandler();
+
+    console.log('Event handlers initialized - all click handlers ready');
   }
-  
+
   /**
-   * Set up handlers for menu item clicks
+   * Set up a direct click handler on the center area as a backup
    */
-  setupMenuNavigationHandling() {
-    // Add event listeners to menu items
-    const menuLinks = document.querySelectorAll('.menu nav ul li a:not(.strike)');
-    menuLinks.forEach((link) => {
-      link.addEventListener('click', () => {
-        if (window.sceneInstance && typeof window.sceneInstance.animateMenuAway === 'function') {
-          window.sceneInstance.animateMenuAway();
-        }
-      });
+  _setupDirectLogoClickHandler() {
+    const sceneContainer = document.getElementById('scene-container');
+    if (!sceneContainer) return;
+
+    // Create an overlay for the center area
+    let centerOverlay = document.getElementById('logo-click-overlay');
+
+    // If it already exists, remove it
+    if (centerOverlay) {
+      centerOverlay.remove();
+    }
+
+    // Create a new overlay
+    centerOverlay = document.createElement('div');
+    centerOverlay.id = 'logo-click-overlay';
+    centerOverlay.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      cursor: pointer;
+      z-index: 10;
+      opacity: 0;
+    `;
+
+    document.body.appendChild(centerOverlay);
+
+    // Add click handler
+    centerOverlay.addEventListener('click', (e) => {
+      console.log('Center overlay clicked');
+      this.handleLogoClick(e);
+    });
+
+    this._eventListeners.push({
+      element: centerOverlay,
+      eventType: 'click',
+      handler: this.handleLogoClick.bind(this)
     });
   }
-  
+
+  /**
+   * Bind event handler methods to maintain 'this' context
+   */
+  _bindHandlers() {
+    this._boundHandlers = {
+      keydown: this.handleKeyDown.bind(this),
+      escape: this.handleEscapeKey.bind(this),
+      logoClick: this.handleLogoClick.bind(this),
+      menuBgClick: this.handleMenuBackgroundClick.bind(this),
+      menuItemClick: this.handleMenuItemClick.bind(this),
+      backButton: this.handleBackButtonClick.bind(this)
+    };
+  }
+
+  /**
+   * Add event listener with tracking for cleanup
+   */
+  _addListener(element, eventType, handler, options) {
+    if (!element) return;
+
+    element.addEventListener(eventType, handler, options);
+    this._eventListeners.push({ element, eventType, handler });
+
+    return { element, eventType, handler };
+  }
+
+  /**
+   * Remove a specific event listener
+   */
+  _removeListener(listener) {
+    if (!listener || !listener.element) return false;
+
+    listener.element.removeEventListener(listener.eventType, listener.handler);
+    return true;
+  }
+
+  /**
+   * Initialize back button
+   */
+  initializeBackButton() {
+    // Find back button
+    const backButton = document.getElementById('back-to-home');
+    if (backButton) {
+      console.log('Initializing back button');
+
+      // Remove existing listeners to prevent duplicates
+      const newBackButton = backButton.cloneNode(true);
+      if (backButton.parentNode) {
+        backButton.parentNode.replaceChild(newBackButton, backButton);
+      }
+
+      // Add new listener
+      this._addListener(newBackButton, 'click', this._boundHandlers.backButton);
+    }
+  }
+
   /**
    * Clean up all event listeners
    */
   cleanup() {
-    console.log('[EventHandler] Cleaning up event handlers');
-    
-    if (this._boundHandlers.keydown) {
-      document.removeEventListener('keydown', this._boundHandlers.keydown);
-    }
-    
-    if (this._boundHandlers.escape) {
-      document.removeEventListener('keydown', this._boundHandlers.escape);
-    }
-    
-    const sceneContainer = document.getElementById('scene-container');
-    if (sceneContainer && this._boundHandlers.click) {
-      sceneContainer.removeEventListener('click', this._boundHandlers.click);
-    }
-    
-    const menu = document.getElementById('menu');
-    if (menu && this._boundHandlers.menuBgClick) {
-      menu.removeEventListener('click', this._boundHandlers.menuBgClick);
-    }
-    
-    // Reset bound handlers
-    this._boundHandlers = {
-      keydown: null,
-      click: null,
-      menuBgClick: null,
-      escape: null
-    };
-    
+    console.log(`Cleaning up ${this._eventListeners.length} event handlers`);
+
+    // Remove all registered event listeners
+    this._eventListeners.forEach(listener => {
+      this._removeListener(listener);
+    });
+
+    this._eventListeners = [];
     this._initialized = false;
   }
-  
+
   /**
-   * Handle space key press
+   * Handle space key press to trigger menu
    */
   handleKeyDown(e) {
     if (e.code === 'Space' && isHomePage()) {
-      console.log('[EventHandler] Space key pressed, handling continue');
-      if (window.sceneInstance && typeof window.sceneInstance.handleContinue === 'function') {
-        window.sceneInstance.handleContinue();
-      } else {
-        console.error('[EventHandler] SceneInstance or handleContinue not available');
-      }
-      
+      console.log('Space key pressed, handling continue');
+      this.triggerContinueAction();
+
       // Prevent space from scrolling the page
       e.preventDefault();
     }
   }
-  
+
   /**
    * Handle logo clicks via raycasting
    */
   handleLogoClick(e) {
     if (!isHomePage()) return;
-    
+
+    console.log('Scene container click detected');
+
     const scene = window.sceneInstance;
-    if (!scene || !scene.logo || !scene.camera) {
-      console.log('[EventHandler] Scene not ready for logo detection');
+    if (!scene) {
+      console.log('Scene not ready');
       return;
     }
-    
-    console.log('[EventHandler] Scene click detected, checking logo intersection');
-    
-    // Set up raycaster for logo detection
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      (e.clientX / window.innerWidth) * 2 - 1,
-      -(e.clientY / window.innerHeight) * 2 + 1
+
+    // Center of the screen
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    // Check if the click is near the center (where the logo is)
+    const distanceFromCenter = Math.sqrt(
+      Math.pow(e.clientX - centerX, 2) +
+      Math.pow(e.clientY - centerY, 2)
     );
-    
-    raycaster.setFromCamera(mouse, scene.camera);
-    const intersects = raycaster.intersectObject(scene.logo, true);
-    
-    if (intersects.length > 0) {
-      console.log('[EventHandler] Logo click detected');
-      scene.handleContinue();
+
+    // Logo click is detected if:
+    // 1. Click is within 150px of center or
+    // 2. Raycasting hits the logo (if logo and camera are available)
+    let logoClicked = distanceFromCenter < 150;
+
+    // Try raycasting if logo and camera are available
+    if (scene.logo && scene.camera) {
+      // Set up raycaster for logo detection
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1
+      );
+
+      raycaster.setFromCamera(mouse, scene.camera);
+      const intersects = raycaster.intersectObject(scene.logo, true);
+
+      if (intersects.length > 0) {
+        logoClicked = true;
+        console.log('Logo hit by raycaster');
+      }
+    }
+
+    if (logoClicked) {
+      console.log('Logo click detected - triggering continue');
+      this.triggerContinueAction();
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
-  
+
+  /**
+   * Trigger the continue action (menu opening)
+   */
+  triggerContinueAction() {
+    // Try using Scene's handleContinue first
+    if (window.sceneInstance && typeof window.sceneInstance.handleContinue === 'function') {
+      window.sceneInstance.handleContinue();
+      return;
+    }
+
+    // Try using AppState as fallback
+    if (window.AppState && typeof window.AppState.openMenu === 'function') {
+      window.AppState.openMenu();
+      return;
+    }
+
+    console.warn('No method found to handle continue action');
+  }
+
   /**
    * Handle menu background clicks to close menu
    */
   handleMenuBackgroundClick(e) {
-    if (e.target === e.currentTarget) { // Only if clicked directly on menu bg, not its children
-      console.log('[EventHandler] Menu background click detected');
-      if (window.sceneInstance && typeof window.sceneInstance.closeMenu === 'function') {
-        window.sceneInstance.closeMenu();
+    // Only if clicked directly on menu background, not its children
+    if (e.target === e.currentTarget) {
+      console.log('Menu background click detected');
+      this.closeMenu();
+    }
+  }
+
+  /**
+   * Handle menu item clicks
+   */
+  handleMenuItemClick(e) {
+    console.log('Menu item clicked');
+
+    const href = e.currentTarget.getAttribute('href');
+
+    // Only handle animation for navigation within site
+    // (not for external links or anchors)
+    if (href && !href.startsWith('http') && !href.startsWith('#')) {
+      console.log('Internal navigation detected, closing menu');
+
+      // Get the scene instance
+      const scene = window.sceneInstance;
+      if (scene && typeof scene.animateMenuAway === 'function') {
+        scene.animateMenuAway();
+      } else {
+        // Fallback to manual closing
+        this.closeMenu();
       }
     }
   }
-  
+
+  /**
+   * Close the menu
+   */
+  closeMenu() {
+    // Try using Scene's closeMenu first
+    if (window.sceneInstance && typeof window.sceneInstance.closeMenu === 'function') {
+      window.sceneInstance.closeMenu();
+      return;
+    }
+
+    // Try using AppState as fallback
+    if (window.AppState && typeof window.AppState.closeMenu === 'function') {
+      window.AppState.closeMenu();
+      return;
+    }
+
+    // Direct manipulation as last resort
+    const menu = document.getElementById('menu');
+    if (menu) {
+      menu.classList.remove('visible');
+      menu.classList.add('hidden');
+    }
+  }
+
   /**
    * Handle escape key to close menu
    */
   handleEscapeKey(e) {
     if (e.code === 'Escape') {
-      console.log('[EventHandler] Escape key pressed');
-      if (window.sceneInstance && typeof window.sceneInstance.closeMenu === 'function') {
-        window.sceneInstance.closeMenu();
-      }
+      console.log('Escape key pressed');
+      this.closeMenu();
     }
   }
-  
+
   /**
-   * Initialize back button
+   * Handle back button clicks
    */
-  initializeBackButton() {
-    const backButton = document.getElementById('back-to-home');
-    if (backButton) {
-      console.log('[EventHandler] Initializing back button');
-      
-      // Remove existing click listeners to prevent duplicates
-      const newBackButton = backButton.cloneNode(true);
-      if (backButton.parentNode) {
-        backButton.parentNode.replaceChild(newBackButton, backButton);
-      }
-      
-      newBackButton.addEventListener('click', (e) => {
-        // If already on home page, just trigger menu
-        if (isHomePage()) {
-          e.preventDefault();
-          if (window.sceneInstance && typeof window.sceneInstance.handleContinue === 'function') {
-            window.sceneInstance.handleContinue();
-          }
-        } else {
-          // On subpage, apply transition effect
-          this.triggerCustomTransition();
-          window.navBackToHome = true;
-        }
-      });
+  handleBackButtonClick(e) {
+    // If already on home page, just trigger menu
+    if (isHomePage()) {
+      e.preventDefault();
+      this.triggerContinueAction();
+    } else {
+      // On subpage, apply transition effect
+      this.triggerCustomTransition();
+      window.navBackToHome = true;
     }
   }
-  
+
   /**
    * Create a custom transition overlay effect
    */
   triggerCustomTransition() {
-    console.log('[EventHandler] Triggering custom transition effect');
-    
-    // Create overlay element
+    console.log('Triggering custom transition effect');
+
+    // Use AnimationManager if available
+    if (window.AnimationManager && typeof window.AnimationManager.createTransitionOverlay === 'function') {
+      window.AnimationManager.createTransitionOverlay('out');
+      return;
+    }
+
+    // Fallback - create overlay manually
     const overlay = document.createElement('div');
     overlay.classList.add('page-transition-overlay');
     overlay.style.cssText = `
@@ -243,18 +400,27 @@ class EventHandlerClass {
       opacity: 0;
       transition: opacity 0.4s ease;
     `;
-    
+
     document.body.appendChild(overlay);
-    
+
     // Fade in overlay
     requestAnimationFrame(() => {
       overlay.style.opacity = '0.8';
     });
-    
+
     // Clean up overlay after navigation
     setTimeout(() => {
       overlay.remove();
     }, 800);
+  }
+
+  /**
+   * Conditional logging
+   */
+  _log(...args) {
+    if (this._debugMode) {
+      console.log('[EventHandler]', ...args);
+    }
   }
 }
 

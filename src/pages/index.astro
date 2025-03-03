@@ -3,64 +3,30 @@ import Layout from "../layouts/Layout.astro";
 ---
 
 <Layout title="Thrifted streetwear shop">
-  <div class="home-content"></div>
+  <div class="home-content">
+    <!-- Home page content can be added here when menu is open -->
+  </div>
 </Layout>
 
 <script>
-  import { AppState } from "../utils/AppState";
+  import { AppState, APP_STATES } from "../utils/AppState";
   import { EventHandler } from "../utils/EventHandler";
 
   document.addEventListener("DOMContentLoaded", () => {
-    // Make sure global scene instance is accessible
-    if (typeof window !== 'undefined' && window.sceneInstance) {
-      // Already assigned in Scene constructor
-    }
-    
     // Initialize back button handling
     EventHandler.initializeBackButton();
-    
+
     // Ensure we're in the correct state on the home page
     if (AppState.isHomePage()) {
       // Reset any stored transition state
       AppState.resetSceneTransitionState();
+
+      // Transition to proper state if needed
+      if (AppState.currentState === APP_STATES.INITIALIZING) {
+        setTimeout(() => {
+          AppState.transitionTo(APP_STATES.IDLE);
+        }, 500);
+      }
     }
   });
 </script>
-
-<style>
-  .home-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    color: white;
-    text-align: center;
-    padding: 2rem;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-
-  :global(#menu.visible) ~ .home-content {
-    opacity: 1;
-  }
-
-  h1 {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-shadow:
-      0 0 15px rgba(255, 255, 255, 0.3),
-      0 0 30px rgba(100, 149, 237, 0.3);
-  }
-
-  p {
-    font-family: "Outfit", sans-serif;
-    font-size: 1.2rem;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-</style>

@@ -1,25 +1,48 @@
 /**
  * UIManager.js
  * Handles all direct DOM manipulations for the application
+ * Provides a clean interface for UI operations while avoiding state management
  */
-
-import anime from 'animejs/lib/anime.es.js';
-import { AppState } from './AppState';
+import { APP_STATES } from './AppState';
 
 class UIManagerClass {
   constructor() {
-    // Cache for DOM elements to avoid repeated querySelector calls
+    // Element cache to avoid repeated DOM queries
     this._elements = {
       menu: null,
       continuePrompt: null,
       loadingScreen: null,
-      sceneContainer: null
+      sceneContainer: null,
+      homeContent: null
     };
-    
-    // Last enforcement time to prevent too frequent UI updates
+
+    // Track last UI enforcement time to prevent flicker
     this._lastEnforcementTime = 0;
+
+    // Debug mode
+    this._debugMode = false;
+
+    // Make this instance globally available
+    if (typeof window !== 'undefined') {
+      window.UIManager = this;
+    }
   }
-  
+
+  /**
+   * Set debug mode on/off
+   */
+  setDebugMode(enabled) {
+    this._debugMode = !!enabled;
+    this._log(`Debug mode ${this._debugMode ? 'enabled' : 'disabled'}`);
+  }
+
+  /**
+   * Get animation manager if available
+   */
+  get animationManager() {
+    return window.AnimationManager || null;
+  }
+
   /**
    * Initialize and cache DOM elements
    */
@@ -28,289 +51,279 @@ class UIManagerClass {
       menu: document.getElementById('menu'),
       continuePrompt: document.getElementById('continue-prompt'),
       loadingScreen: document.getElementById('loading-screen'),
-      sceneContainer: document.getElementById('scene-container')
+      sceneContainer: document.getElementById('scene-container'),
+      homeContent: document.querySelector('.home-content')
     };
-    
-    console.log('[UIManager] Initialized DOM elements');
+
+    this._log('UI elements cached');
+
+    // Apply any needed initial styles
+    this._fixInitialStyles();
   }
-  
+
   /**
-   * Get a DOM element, initializing the cache if needed
+   * Fix any initial style issues when page loads
+   */
+  _fixInitialStyles() {
+    // Ensure menu has no leftover inline styles
+    if (this._elements.menu) {
+      this._elements.menu.style.opacity = '';
+
+      const menuItems = this._elements.menu.querySelectorAll('nav ul li');
+      menuItems.forEach(item => {
+        item.style.opacity = '';
+        item.style.transform = '';
+      });
+    }
+  }
+
+  /**
+   * Get a cached DOM element or query for it if not cached
    */
   getElement(key) {
     if (!this._elements[key]) {
-      this._elements[key] = document.getElementById(key);
+      this._elements[key] = document.getElementById(key) || document.querySelector(`.${key}`);
     }
     return this._elements[key];
   }
-  
+
   /**
-   * Show the menu with animation effects
-   */
-  showMenu() {
-    const menu = this.getElement('menu');
-    if (!menu) return;
-    
-    console.log('[UIManager] Showing menu');
-    
-    // Make menu visible
-    menu.classList.remove('hidden');
-    menu.classList.add('visible');
-    
-    // Add ripple effect for visual interest
-    this.addRippleEffect(menu);
-    
-    // Animate menu items
-    anime({
-      targets: '.menu nav ul li',
-      translateY: [20, 0],
-      opacity: [0, 1],
-      duration: 600,
-      delay: anime.stagger(80)
-    });
-    
-    // Hide continue prompt
-    this.hideContinuePrompt();
-    
-    // Scale scene container slightly for depth effect
-    const sceneContainer = this.getElement('sceneContainer');
-    if (sceneContainer) {
-      sceneContainer.style.transition = 'transform 1.5s cubic-bezier(0.19, 1, 0.22, 1)';
-      sceneContainer.style.transform = 'scale(1.05)';
-    }
-    
-    // Make home content visible if it exists
-    const homeContent = document.querySelector('.home-content');
-    if (homeContent) {
-      homeContent.style.opacity = '1';
-    }
-  }
-  
-  /**
-   * Hide the menu with animation effects
-   */
-  hideMenu() {
-    const menu = this.getElement('menu');
-    if (!menu) return;
-    
-    console.log('[UIManager] Hiding menu');
-    
-    // Fade out menu items with staggered animation
-    const menuItems = menu.querySelectorAll('nav ul li');
-    menuItems.forEach((item, index) => {
-      setTimeout(() => {
-        item.style.opacity = '0';
-        item.style.transform = 'translateY(-20px)';
-      }, index * 50);
-    });
-    
-    // Reset scene container scale
-    const sceneContainer = this.getElement('sceneContainer');
-    if (sceneContainer) {
-      sceneContainer.style.transform = 'scale(1)';
-    }
-    
-    // Fade out menu background
-    setTimeout(() => {
-      menu.classList.remove('visible');
-      
-      // Finally hide the menu completely
-      setTimeout(() => {
-        menu.classList.add('hidden');
-        
-        // Reset menu items for next time
-        menuItems.forEach(item => {
-          item.style.opacity = '';
-          item.style.transform = '';
-        });
-      }, 500);
-    }, menuItems.length * 50 + 100);
-    
-    // Show continue prompt if on home page
-    if (AppState.isHomePage()) {
-      this.showContinuePrompt();
-    }
-  }
-  
-  /**
-   * Ensure menu is hidden (immediately, without animation)
-   */
-  ensureMenuHidden() {
-    const menu = this.getElement('menu');
-    if (!menu) return;
-    
-    menu.classList.remove('visible');
-    menu.classList.add('hidden');
-  }
-  
-  /**
-   * Ensure menu is visible (immediately, without animation)
+   * Show the menu immediately (without animation)
    */
   ensureMenuVisible() {
     const menu = this.getElement('menu');
     if (!menu) return;
-    
+
     menu.classList.remove('hidden');
     menu.classList.add('visible');
+    menu.style.opacity = '';
+
+    // Also make home content visible if it exists
+    const homeContent = this.getElement('homeContent');
+    if (homeContent) {
+      homeContent.style.opacity = '1';
+    }
+
+    this._log('Menu visibility enforced');
   }
-  
+
+  /**
+   * Hide the menu immediately (without animation)
+   */
+  ensureMenuHidden() {
+    const menu = this.getElement('menu');
+    if (!menu) return;
+
+    menu.classList.remove('visible');
+    menu.classList.add('hidden');
+    menu.style.opacity = '';
+
+    // Reset menu items
+    const menuItems = menu.querySelectorAll('nav ul li');
+    menuItems.forEach(item => {
+      item.style.opacity = '';
+      item.style.transform = '';
+    });
+
+    this._log('Menu hidden state enforced');
+  }
+
   /**
    * Show the continue prompt with animation
    */
   showContinuePrompt() {
     const prompt = this.getElement('continuePrompt');
     if (!prompt) return;
-    
-    console.log('[UIManager] Showing continue prompt');
-    
-    // Make prompt visible
-    prompt.classList.remove('hidden');
-    
-    // Format text for letter-by-letter animation
-    const text = prompt.textContent || '';
-    prompt.innerHTML = text.split('').map(char =>
-      char === ' ' ? ' ' : `<span>${char}</span>`
-    ).join('');
-    
-    // Animate prompt appearance
-    anime.timeline({
-      easing: 'easeOutElastic(1, 0.8)'
-    })
-    .add({
-      targets: prompt,
-      opacity: 1,
-      translateY: [30, 0],
-      duration: 800
-    })
-    .add({
-      targets: '#continue-prompt span',
-      translateY: [-20, 0],
-      opacity: [0, 1],
-      delay: anime.stagger(30),
-      duration: 600,
-      complete: () => {
-        prompt.style.opacity = '1';
-      }
-    }, '-=400');
+
+    this._log('Showing continue prompt');
+
+    if (this.animationManager) {
+      this.animationManager.animateContinuePromptIn(prompt);
+    } else {
+      // Simple fallback if AnimationManager not available
+      prompt.classList.remove('hidden');
+      prompt.style.opacity = '1';
+    }
   }
-  
+
   /**
    * Hide the continue prompt
    */
   hideContinuePrompt() {
     const prompt = this.getElement('continuePrompt');
     if (!prompt) return;
-    
-    console.log('[UIManager] Hiding continue prompt');
-    
-    // Animate fadeout
-    anime({
-      targets: prompt,
-      opacity: [1, 0],
-      translateY: [0, 30],
-      scale: [1, 0.95],
-      duration: 600,
-      easing: 'easeOutExpo',
-      complete: () => prompt.classList.add('hidden')
-    });
+
+    this._log('Hiding continue prompt');
+
+    if (this.animationManager) {
+      this.animationManager.animateContinuePromptOut(prompt);
+    } else {
+      // Simple fallback if AnimationManager not available
+      prompt.style.opacity = '0';
+      setTimeout(() => {
+        prompt.classList.add('hidden');
+      }, 600);
+    }
   }
-  
+
   /**
    * Hide the loading screen
    */
   hideLoadingScreen() {
     const loadingScreen = this.getElement('loadingScreen');
     if (!loadingScreen) return;
-    
-    console.log('[UIManager] Hiding loading screen');
-    
+
+    this._log('Hiding loading screen');
     loadingScreen.style.opacity = '0';
+
     setTimeout(() => {
       loadingScreen.style.display = 'none';
     }, 500);
   }
-  
+
   /**
-   * Add a ripple effect to an element
+   * Show the home content
    */
-  addRippleEffect(element) {
-    // Create ripple element
-    const ripple = document.createElement('div');
-    ripple.classList.add('menu-ripple');
-    ripple.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0);
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(100,149,237,0.3) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: -1;
-    `;
-    
-    element.appendChild(ripple);
-    
-    // Animate ripple expansion
-    setTimeout(() => {
-      ripple.style.transition = 'transform 1s cubic-bezier(0.19, 1, 0.22, 1)';
-      ripple.style.transform = 'translate(-50%, -50%) scale(50)';
-      
-      // Remove after animation completes
-      setTimeout(() => {
-        ripple.remove();
-      }, 1000);
-    }, 10);
+  showHomeContent() {
+    const homeContent = this.getElement('homeContent');
+    if (!homeContent) return;
+
+    homeContent.style.opacity = '1';
   }
-  
+
   /**
-   * Enforce the correct UI state based on current app state
-   * This is a recovery mechanism for when state gets out of sync
+   * Hide the home content
    */
-  enforceCorrectUIState() {
-    // Don't run this too frequently
+  hideHomeContent() {
+    const homeContent = this.getElement('homeContent');
+    if (!homeContent) return;
+
+    homeContent.style.opacity = '0';
+  }
+
+  /**
+   * Enforce correct UI state based on App State
+   * Acts as a recovery mechanism for when state gets out of sync
+   */
+  enforceCorrectUIState(appState) {
+    // Don't run too frequently to prevent flickering
     const now = Date.now();
     if (now - this._lastEnforcementTime < 300) return;
     this._lastEnforcementTime = now;
-    
-    console.log('[UIManager] Enforcing correct UI state');
-    
-    // Only enforce on home page
-    if (!AppState.isHomePage()) return;
-    
+
+    if (!appState) {
+      this._log('Cannot enforce UI state: AppState required');
+      return;
+    }
+
+    this._log('Enforcing correct UI state for', appState.currentState);
+
     const menu = this.getElement('menu');
     const continuePrompt = this.getElement('continuePrompt');
-    
+    const homeContent = this.getElement('homeContent');
+
     if (!menu || !continuePrompt) return;
-    
+
+    // Fix menu item styles to ensure they're ready for animation
+    const menuItems = menu.querySelectorAll('nav ul li');
+
     // Enforce correct UI based on app state
-    switch (AppState.currentState) {
-      case 'IDLE':
+    switch (appState.currentState) {
+      case APP_STATES.IDLE:
         // Should show continue prompt, hide menu
         if (continuePrompt.classList.contains('hidden')) {
           continuePrompt.classList.remove('hidden');
+          continuePrompt.style.opacity = '1';
         }
+
         if (menu.classList.contains('visible')) {
-          menu.classList.remove('visible');
-          menu.classList.add('hidden');
+          this.ensureMenuHidden();
+        }
+
+        if (homeContent) {
+          homeContent.style.opacity = '0';
         }
         break;
-        
-      case 'MENU_OPEN':
+
+      case APP_STATES.MENU_OPEN:
         // Should hide continue prompt, show menu
         if (!continuePrompt.classList.contains('hidden')) {
           continuePrompt.classList.add('hidden');
+          continuePrompt.style.opacity = '0';
         }
+
         if (!menu.classList.contains('visible')) {
-          menu.classList.remove('hidden');
-          menu.classList.add('visible');
+          this.ensureMenuVisible();
+
+          // Ensure menu items are visible and in correct position
+          menuItems.forEach(item => {
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+          });
+        }
+
+        if (homeContent) {
+          homeContent.style.opacity = '1';
         }
         break;
-        
-      default:
-        // For other states, don't enforce anything
+
+      case APP_STATES.SUBPAGE:
+        // On subpage, ensure menu is hidden and prompt is hidden
+        if (!continuePrompt.classList.contains('hidden')) {
+          continuePrompt.classList.add('hidden');
+        }
+
+        if (menu.classList.contains('visible')) {
+          this.ensureMenuHidden();
+        }
         break;
+
+      default:
+        // For transition states, don't enforce changes to avoid conflicts
+        // with ongoing animations
+        break;
+    }
+  }
+
+  /**
+   * Handle page transition effects
+   */
+  handlePageTransition(isLeavingPage, isHomePage) {
+    if (isLeavingPage) {
+      // Leaving current page
+      this._log(`Transitioning away from ${isHomePage ? 'home' : 'subpage'}`);
+
+      // Fade out content
+      const content = isHomePage ? this.getElement('homeContent') : document.querySelector('.photos-container');
+
+      if (content) {
+        content.style.opacity = '0';
+      }
+    } else {
+      // Entering new page
+      this._log(`Transitioning to ${isHomePage ? 'home' : 'subpage'}`);
+
+      // Fade in content with delay to allow for scene transition
+      const content = isHomePage ? this.getElement('homeContent') : document.querySelector('.photos-container');
+
+      if (content) {
+        // Reset opacity first
+        content.style.opacity = '0';
+
+        // Trigger fade in with delay
+        setTimeout(() => {
+          content.style.opacity = '1';
+        }, 200);
+      }
+    }
+  }
+
+  /**
+   * Conditional logging
+   */
+  _log(...args) {
+    if (this._debugMode) {
+      console.log('[UIManager]', ...args);
     }
   }
 }

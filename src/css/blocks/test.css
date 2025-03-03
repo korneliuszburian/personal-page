@@ -1,167 +1,218 @@
-.photos-container {
-    position: relative;
-    z-index: 10;
-    padding: 4rem 2rem;
-    color: white;
-    max-width: 1200px;
-    margin: 0 auto;
-    opacity: 0;
-    animation: fadeIn 0.8s forwards;
-    animation-delay: 0.3s;
+/**
+ * global.css
+ * Main stylesheet with animation fixes and improved transitions
+ */
+
+#loading-screen {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease;
 }
 
-.photos-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 3rem;
-    flex-wrap: wrap;
-    gap: 1rem;
+.loader {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #333;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-h1 {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 3rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3),
-        0 0 30px rgba(100, 149, 237, 0.3);
-    margin: 0;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
+
+/* 3D Scene container */
+#scene-container {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  background: #000;
+  transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* Main content container */
+#page-content {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  min-height: 100vh;
+}
+
+
+
+/* Pulse animation for continue prompt */
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: translateX(-50%) scale(0.98);
+    text-shadow:
+      0 0 10px rgba(255, 255, 255, 0.3),
+      0 0 20px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+    text-shadow:
+      0 0 15px rgba(255, 255, 255, 0.5),
+      0 0 30px rgba(255, 255, 255, 0.3),
+      0 0 40px rgba(100, 149, 237, 0.3);
+  }
+}
+
+#continue-prompt span {
+  display: inline-block;
+  will-change: opacity, transform;
+}
+
+/* Utility class */
+.hidden {
+  display: none !important;
+}
+
+/* === MENU STYLING === */
+.menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 500;
+  will-change: opacity;
+
+  /* Remove transition to prevent conflicts with anime.js */
+  /* transition property removed intentionally */
+}
+
+.menu.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.menu nav {
+  position: relative;
+  z-index: 2;
+}
+
+.menu nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+}
+
+.menu nav ul li {
+  margin: 2rem 0;
+  transform: translateY(0);
+  opacity: 1;
+  will-change: opacity, transform;
+
+  /* Remove transition to prevent conflicts with anime.js */
+  /* transition property removed intentionally */
+}
+
+.menu nav ul li a {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: white;
+  text-decoration: none;
+  font-size: 2rem;
+  transition: color 0.3s, transform 0.3s;
+}
+
+.menu nav ul li a:hover {
+  color: #f0f0f0;
+  transform: translateY(-2px);
+}
+
+.menu nav ul li a.strike {
+  text-decoration: line-through;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* === HOME PAGE STYLES === */
+.home-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: white;
+  text-align: center;
+  padding: 2rem;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.home-content h1 {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 15px rgba(255, 255, 255, 0.3),
+    0 0 30px rgba(100, 149, 237, 0.3);
+}
+
+.home-content p {
+  font-family: "Outfit", sans-serif;
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
 
 .back-button {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: white;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.6rem 1.2rem;
-    border-radius: 4px;
-    text-decoration: none;
-    transition: all 0.3s ease;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  will-change: transform, box-shadow, background-color;
 }
 
 .back-button:hover {
-    background: rgba(100, 149, 237, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  background: rgba(100, 149, 237, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.photos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
-}
-
-.photo-item {
-    position: relative;
-    aspect-ratio: 4/3;
-    overflow: hidden;
-    border-radius: 8px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-}
-
-.photo-item:hover {
-    transform: scale(1.02) translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-}
-
-.photo-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: opacity 0.3s ease, transform 0.5s ease;
-}
-
-.photo-item:hover img {
-    opacity: 0.9;
-    transform: scale(1.05);
-}
-
-.photo-caption {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 500;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-}
-
-.photo-item:hover .photo-caption {
-    transform: translateY(0);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (max-width: 768px) {
-    .photos-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    h1 {
-        font-size: 2.2rem;
-    }
-
-    .photos-grid {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 1.5rem;
-    }
-}
-
-.home-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    color: white;
-    text-align: center;
-    padding: 2rem;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
-:global(#menu.visible)~.home-content {
-    opacity: 1;
-}
-
-h1 {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 3rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-shadow:
-        0 0 15px rgba(255, 255, 255, 0.3),
-        0 0 30px rgba(100, 149, 237, 0.3);
-}
-
-p {
-    font-family: "Outfit", sans-serif;
-    font-size: 1.2rem;
-    max-width: 600px;
-    margin: 0 auto;
+.page-transition-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
 }

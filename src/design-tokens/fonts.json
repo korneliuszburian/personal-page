@@ -4,8 +4,13 @@
   "items": [
     {
       "name": "Base",
-      "description": "System fonts for body copy and globally set text.",
-      "value": ["Inter", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"]
+      "description": "Primary font for paragraph content in home sections.",
+      "value": ["Outfit", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"]
+    },
+    {
+      "name": "Secondary",
+      "description": "Secondary font for paragraph content in home sections.",
+      "value": ["Rajdhani", "Segoe UI", "Arial", "sans-serif"]
     }
   ]
 }
